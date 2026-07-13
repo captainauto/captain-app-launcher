@@ -37,6 +37,7 @@
 // 일반 브라우저 탭으로 열었을 때는 여기 머물러서 "홈 화면에 추가"를 할 수 있게 둔다.
 var isStandalone = window.navigator.standalone === true ||
   (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+console.log('[launcher] navStandalone=' + window.navigator.standalone + ' matchMedia=' + (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches));
 if (isStandalone) {
   location.replace(document.getElementById('openBtn').href);
 }
