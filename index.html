@@ -12,17 +12,34 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#2563eb">
-<meta http-equiv="refresh" content="0; url=https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec">
-<script>
-location.replace('https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec');
-</script>
 <style>
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif; text-align: center; margin-top: 80px; color: #6b7280; background: #f5f7fa; }
-  img { width: 72px; height: 72px; border-radius: 16px; margin-bottom: 16px; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif; text-align: center; margin-top: 60px; color: #1f2937; background: #f5f7fa; padding: 0 20px; }
+  img { width: 88px; height: 88px; border-radius: 20px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+  h1 { font-size: 18px; margin: 0 0 24px; }
+  .btn { display: inline-block; background: #2563eb; color: #fff; text-decoration: none; font-weight: 700; padding: 14px 28px; border-radius: 10px; font-size: 16px; }
+  .hint { max-width: 360px; margin: 28px auto 0; text-align: left; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 18px; font-size: 13px; color: #6b7280; line-height: 1.6; }
+  .hint b { color: #1f2937; }
 </style>
 </head>
 <body>
   <img src="icon.png" alt="캡틴자동문">
-  <p>캡틴자동문으로 이동 중...</p>
+  <h1>캡틴자동문</h1>
+  <a class="btn" id="openBtn" href="https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec">지금 열기</a>
+  <div class="hint">
+    <b>홈 화면에 아이콘으로 추가하려면:</b><br>
+    아이폰(Safari): 하단 공유 버튼 → "홈 화면에 추가"<br>
+    안드로이드(Chrome): 우측 상단 메뉴(⋮) → "홈 화면에 추가"
+    <br><br>
+    한 번 추가해두면, 다음부터는 아이콘을 누르는 즉시 바로 앱으로 들어갑니다.
+  </div>
+<script>
+// 이미 홈 화면 아이콘으로 설치되어 "앱처럼" 실행된 경우에만 바로 앱으로 이동.
+// 일반 브라우저 탭으로 열었을 때는 여기 머물러서 "홈 화면에 추가"를 할 수 있게 둔다.
+var isStandalone = window.navigator.standalone === true ||
+  (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+if (isStandalone) {
+  location.replace(document.getElementById('openBtn').href);
+}
+</script>
 </body>
 </html>
