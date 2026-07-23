@@ -18,20 +18,20 @@
 <style>
   html, body { height: 100%; margin: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif; text-align: center; margin-top: 60px; color: #1f2937; background: #f5f7fa; padding: 0 20px; }
-  img { width: 88px; height: 88px; border-radius: 20px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+  .logo { width: 168px; height: 168px; object-fit: contain; margin-bottom: 8px; }
   h1 { font-size: 18px; margin: 0 0 24px; }
   .btn { display: inline-block; background: #2563eb; color: #fff; text-decoration: none; font-weight: 700; padding: 14px 28px; border-radius: 10px; font-size: 16px; border: none; font-family: inherit; cursor: pointer; }
   .hint { max-width: 360px; margin: 28px auto 0; text-align: left; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 18px; font-size: 13px; color: #6b7280; line-height: 1.6; }
   .hint b { color: #1f2937; }
   #appFrame { display: none; position: fixed; inset: 0; width: 100%; height: 100%; border: 0; }
-  .credit { position: fixed; right: 16px; bottom: 8px; font-size: 12px; color: #9ca3af; letter-spacing: .2px; }
-  .credit .sig { font-family: 'Great Vibes', cursive; font-size: 22px; color: #6b7280; margin-left: 3px; }
+  .credit { margin: 0 0 24px; font-size: 13px; color: #9ca3af; }
+  .credit .sig { font-family: 'Great Vibes', cursive; font-size: 24px; color: #6b7280; margin-left: 4px; }
 </style>
 </head>
 <body>
   <div id="landing">
-    <img src="icon.png" alt="캡틴자동문">
-    <h1>캡틴자동문</h1>
+    <img class="logo" src="logo.png" alt="캡틴자동문">
+    <div class="credit">by <span class="sig">Seungwoo Kim</span></div>
     <button class="btn" id="openBtn">지금 열기</button>
     <div class="hint">
       <b>홈 화면에 아이콘으로 추가하려면:</b><br>
@@ -40,7 +40,6 @@
       <br><br>
       한 번 추가해두면, 다음부터는 아이콘을 누르는 즉시 바로 앱으로 들어갑니다.
     </div>
-    <div class="credit">by <span class="sig">Seungwoo Kim</span></div>
   </div>
   <iframe id="appFrame" title="캡틴자동문 관리자 대시보드"></iframe>
 <script>
@@ -61,7 +60,7 @@ document.getElementById('openBtn').addEventListener('click', openApp);
 var isStandalone = window.navigator.standalone === true ||
   (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
 if (isStandalone) {
-  openApp();
+  setTimeout(openApp, 1000);
 }
 </script>
 </body>
