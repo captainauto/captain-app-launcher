@@ -17,28 +17,35 @@
 <meta name="theme-color" content="#2563eb">
 <style>
   html, body { height: 100%; margin: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif; text-align: center; margin-top: 60px; color: #1f2937; background: #f5f7fa; padding: 0 20px; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif; text-align: center; color: #1f2937; background: #f5f7fa; }
+  #landing { display: flex; flex-direction: column; height: 100vh; }
+  .top-half { flex: 0 0 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .bottom-half { flex: 0 0 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 20px; box-sizing: border-box; }
   .logo { width: 168px; height: 168px; object-fit: contain; margin-bottom: 8px; }
   h1 { font-size: 18px; margin: 0 0 24px; }
   .btn { display: inline-block; background: #2563eb; color: #fff; text-decoration: none; font-weight: 700; padding: 14px 28px; border-radius: 10px; font-size: 16px; border: none; font-family: inherit; cursor: pointer; }
-  .hint { max-width: 360px; margin: 28px auto 0; text-align: left; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 18px; font-size: 13px; color: #6b7280; line-height: 1.6; }
+  .hint { max-width: 360px; margin: 20px auto 0; text-align: left; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 18px; font-size: 13px; color: #6b7280; line-height: 1.6; }
   .hint b { color: #1f2937; }
   #appFrame { display: none; position: fixed; inset: 0; width: 100%; height: 100%; border: 0; }
-  .credit { margin: 0 0 24px; font-size: 13px; color: #9ca3af; }
+  .credit { margin: 0; font-size: 13px; color: #9ca3af; }
   .credit .sig { font-family: 'Great Vibes', cursive; font-size: 24px; color: #6b7280; margin-left: 4px; }
 </style>
 </head>
 <body>
   <div id="landing">
-    <img class="logo" src="logo.png" alt="캡틴자동문">
-    <div class="credit">by <span class="sig">Seungwoo Kim</span></div>
-    <button class="btn" id="openBtn">지금 열기</button>
-    <div class="hint">
-      <b>홈 화면에 아이콘으로 추가하려면:</b><br>
-      아이폰(Safari): 하단 공유 버튼 → "홈 화면에 추가"<br>
-      안드로이드(Chrome): 우측 상단 메뉴(⋮) → "홈 화면에 추가"
-      <br><br>
-      한 번 추가해두면, 다음부터는 아이콘을 누르는 즉시 바로 앱으로 들어갑니다.
+    <div class="top-half">
+      <img class="logo" src="logo.png" alt="캡틴자동문">
+      <div class="credit">by <span class="sig">Seungwoo Kim</span></div>
+    </div>
+    <div class="bottom-half">
+      <button class="btn" id="openBtn">지금 열기</button>
+      <div class="hint">
+        <b>홈 화면에 아이콘으로 추가하려면:</b><br>
+        아이폰(Safari): 하단 공유 버튼 → "홈 화면에 추가"<br>
+        안드로이드(Chrome): 우측 상단 메뉴(⋮) → "홈 화면에 추가"
+        <br><br>
+        한 번 추가해두면, 다음부터는 아이콘을 누르는 즉시 바로 앱으로 들어갑니다.
+      </div>
     </div>
   </div>
   <iframe id="appFrame" title="캡틴자동문 관리자 대시보드"></iframe>
