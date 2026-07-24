@@ -60,7 +60,7 @@ document.getElementById('openBtn').addEventListener('click', openApp);
 var isStandalone = window.navigator.standalone === true ||
   (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
 if (isStandalone) {
-  setTimeout(openApp, 1000);
+  openApp();
 }
 </script>
 </body>
