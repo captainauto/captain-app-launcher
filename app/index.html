@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>캡틴자동문</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="manifest" href="../manifest.json">
+  <link rel="icon" type="image/png" href="../icon.png">
+  <link rel="apple-touch-icon" href="../icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="캡틴자동문">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#2563eb">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --bg: #f5f7fa;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --danger: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .container { max-width: 880px; margin: 0 auto; padding: 16px; }
+    h1 { font-size: 20px; margin: 8px 0 20px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 15px;
+      background: #fff;
+    }
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      padding: 11px 18px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-outline { background: #fff; border: 1px solid var(--border); color: var(--text); }
+    .btn-danger { background: #fff; border: 1px solid var(--danger); color: var(--danger); }
+    .row { display: flex; gap: 10px; }
+    .row > * { flex: 1; }
+    .search-flt { flex-wrap: wrap; }
+    .search-flt > input { flex: 2 1 200px; }
+    .search-flt > .msf { flex: 1 1 130px; min-width: 130px; }
+    .search-flt > .btn-primary { flex: 1 1 90px; }
+    .top-bar {
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;
+      gap: 8px 10px;
+      margin-bottom: 16px;
+    }
+    /* 좁은 화면에서 버튼 글씨가 한 글자씩 세로로 쌓이던 문제 방지 — 넘치면 아래로 줄바꿈되게 하고,
+       버튼 안 글자는 절대 줄바꿈 안 되게(nowrap) 고정 */
+    .top-bar button, .top-bar select { white-space: nowrap; }
+    /* 상단 목차(탭) — 좁은 화면에선 여러 줄로 쌓지 않고 목차 줄만 가로로 스와이프한다.
+       (정직자동문 홈페이지 상단 메뉴와 같은 방식) 화면이 880px 이상으로 넓어지면
+       예전처럼 줄바꿈해서 전부 보여준다.
+       또 목차 줄만 화면 맨 위에 고정해서(sticky) 아래로 길게 스크롤해도 탭이 계속 보이게 한다.
+       제목줄은 같이 고정하지 않는다 — 폰에서 위쪽 공간을 너무 많이 먹기 때문.
+       z-index 40 = 자동완성 드롭다운(30)보다는 위, 모달(50 이상)보다는 아래. */
+    .tabs {
+      display: flex; gap: 8px; margin-bottom: 16px;
+      flex-wrap: nowrap; white-space: nowrap;
+      overflow-x: auto; overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      position: sticky; top: 0; z-index: 40;
+      background: var(--bg);
+      box-shadow: 0 6px 8px -6px rgba(0,0,0,0.12);
+      /* 컨테이너 좌우 여백(16px)만큼 밖으로 빼서 화면 끝까지 스크롤·고정되게 */
+      margin-left: -16px; margin-right: -16px; padding: 8px 16px;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    @media (min-width: 880px) {
+      .tabs {
+        flex-wrap: wrap; white-space: normal; overflow-x: visible;
+        row-gap: 8px; margin-left: 0; margin-right: 0; padding: 8px 0;
+      }
+    }
+    .tab-btn {
+      background: #fff; border: 1px solid var(--border); color: var(--muted);
+      padding: 8px 14px; border-radius: 20px; font-size: 14px; font-weight: 500;
+      flex: 0 0 auto;
+    }
+    .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .tab-btn-primary { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; font-weight: 700; }
+    .tab-btn-stats { background: #faf5ff; border-color: #e9d5ff; color: #7e22ce; font-weight: 700; }
+    .tab-btn-stats.active { background: #9333ea; color: #fff; border-color: #9333ea; }
+    .chart-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; }
+    .chart-legend-item { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+    .chart-legend-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex-shrink: 0; }
+    .tab-btn-primary.active { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 6px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+    th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: #fff; }
+    .table-wrap { overflow-x: auto; max-height: 500px; }
+    .mat-table th, .mat-table td { text-align: center; }
+    .mat-table th.col-div, .mat-table td.col-div { border-right: 2px solid var(--border); }
+    .mat-table td.mat-blank { color: var(--muted); }
+    .muted { color: var(--muted); font-size: 13px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; background: #eef2ff; color: var(--primary); }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .cal-head { text-align: center; font-size: 12px; color: var(--muted); padding: 4px 0; }
+    .cal-cell {
+      background: #fff; border: 1px solid var(--border); border-radius: 8px;
+      min-height: 64px; padding: 6px; font-size: 12px; cursor: pointer;
+    }
+    .cal-cell:hover { border-color: var(--primary); }
+    .cal-cell .d { font-weight: 600; margin-bottom: 2px; }
+    .cal-cell .info { color: var(--primary); font-size: 11px; }
+    .cal-cell.empty { background: transparent; border: none; cursor: default; }
+    .cal-cell.selected { border-color: var(--primary); border-width: 2px; background: #eef6ff; }
+    .cal-cell .info { display: flex; flex-wrap: wrap; }
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: #1f2937; color: #fff; padding: 10px 18px; border-radius: 8px;
+      font-size: 14px; z-index: 100; opacity: 0; transition: opacity .3s;
+    }
+    .toast.show { opacity: 1; }
+    .hidden { display: none !important; }
+    .ac-dropdown {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 30;
+      background: #fff; border: 1px solid var(--border); border-radius: 8px;
+      max-height: 220px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,.1);
+      margin-top: 2px;
+    }
+    .ac-item { padding: 8px 12px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #f1f3f5; }
+    .ac-item:hover { background: #eff6ff; }
+    .ac-item .ac-sub { font-size: 12px; color: var(--muted); margin-left: 6px; }
+    .ac-empty { padding: 8px 12px; color: var(--muted); font-size: 13px; }
+    .stat-card {
+      flex: 1; min-width: 140px; background: #fff; border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px;
+    }
+    .stat-card .stat-label { font-size: 13px; color: var(--muted); }
+    .stat-card .stat-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+    .stat-card .stat-delta { font-size: 12px; margin-top: 4px; }
+    .delta-up { color: #16a34a; }
+    .delta-down { color: #dc2626; }
+    .bar-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 13px; }
+    .bar-row .bar-label { width: 56px; color: var(--muted); flex-shrink: 0; }
+    .bar-track { flex: 1; background: #f1f5f9; border-radius: 6px; height: 22px; position: relative; overflow: hidden; }
+    .bar-fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #3b82f6, #2563eb); border-radius: 6px; }
+    .bar-fill.margin { background: linear-gradient(90deg, #4ade80, #16a34a); }
+    .bar-val { width: 110px; text-align: right; flex-shrink: 0; }
+    .rank-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .rank-num { width: 24px; height: 24px; border-radius: 50%; background: #eef2ff; color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.4);
+      display: flex; align-items: center; justify-content: center; z-index: 50;
+    }
+    .modal { background: #fff; border-radius: 12px; padding: 20px; width: 92%; max-width: 480px; max-height: 85vh; overflow-y: auto; }
+    .close-x { float: right; background: none; color: var(--muted); font-size: 18px; padding: 0 4px; }
+    .dropzone {
+      border: 1px dashed var(--border); border-radius: 8px; padding: 6px;
+      transition: border-color .15s, background .15s;
+    }
+    .dropzone.dropzone-active { border-color: var(--primary); background: #eff6ff; }
+    .dropzone input[type="file"] { border: none; padding: 4px 0; }
+    .dropzone-hint { font-size: 11px; color: var(--muted); margin: 2px 0 0; }
+    .upload-progress-wrap { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+    .upload-progress-track {
+      flex: 1; height: 14px; border-radius: 999px; overflow: hidden; border: 1px solid var(--border);
+      background-image: repeating-linear-gradient(135deg, #eef0f2 0 4px, #f7f8f9 4px 8px);
+    }
+    .upload-progress-fill { height: 100%; width: 0%; background: var(--primary); border-radius: 999px 0 0 999px; transition: width .2s ease; }
+    .upload-progress-pct { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 13px; min-width: 40px; text-align: right; }
+    .msf { position: relative; flex: 1; min-width: 0; }
+    .msf-btn {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 15px; background: #fff; color: var(--text); text-align: left; cursor: pointer;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .msf-btn::after { content: '▾'; float: right; color: var(--muted); margin-left: 6px; }
+    .msf-panel {
+      display: none; position: absolute; z-index: 100; top: calc(100% + 4px); left: 0;
+      background: #fff; border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.14); min-width: 170px; max-height: 260px; overflow-y: auto;
+      padding: 6px 0;
+    }
+    .msf-panel.open { display: block; }
+    .msf-panel label {
+      display: flex; align-items: center; gap: 6px; padding: 6px 12px; margin: 0;
+      font-size: 14px; color: var(--text); cursor: pointer; white-space: nowrap;
+    }
+    .msf-panel label:hover { background: var(--bg); }
+    .msf-panel input[type="checkbox"] {
+      width: auto; height: auto; padding: 0; border: none; background: none; border-radius: 0;
+      margin: 0; flex: 0 0 auto;
+    }
+    .msf-actions { display: flex; gap: 10px; padding: 2px 12px 8px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+    .msf-actions a { font-size: 12px; color: var(--primary); cursor: pointer; }
+    /* 도어락 가격표 "한번에 만들기" 체크박스 목록.
+       위쪽 전역 `input,select,textarea{width:100%;padding:10px 12px;border:...}`가 체크박스에도 걸려서
+       보이지 않는 박스가 100% 너비로 뻥튀기되는 함정이 있다(.msf-panel과 같은 이유) — 여기서 되돌린다. */
+    #dcBulkPick label {
+      display: inline-flex; align-items: center; gap: 5px; margin: 0;
+      font-size: 13px; color: var(--text); cursor: pointer; white-space: nowrap;
+    }
+    #dcBulkPick input[type="checkbox"] {
+      width: auto; height: auto; padding: 0; border: none; background: none; border-radius: 0;
+      margin: 0; flex: 0 0 auto;
+    }
+  </style>
+</head>
+<body>
+<script>
+  // 로딩 시간 계측(2026-08-02) — 사장님 폰에서 실제로 어디가 느린지 봐야 최적화 방향을 정할 수 있다.
+  // 여기(문서 맨 위)까지 오는 데 걸린 시간 = 네트워크 + 구글 서버가 화면을 만들어 보내는 시간.
+  // 화면 코드(약 384KB)는 이 아래 맨 끝에 있으므로, 이 시점엔 아직 안 받았을 수도 있다.
+  window.__T_HTML__ = (window.performance && performance.now) ? performance.now() : 0;
+</script>
+  <div class="container" id="app">
+    <div id="loginView">
+      <h1>🔧 출장 관리 시스템</h1>
+      <div class="card">
+        <label>이름</label>
+        <input id="loginName" placeholder="예: 김승우" />
+        <label>PIN 번호</label>
+        <input id="loginPin" type="password" placeholder="관리자가 발급한 4자리 번호" />
+        <div style="margin-top:16px;">
+          <button class="btn-primary" style="width:100%" onclick="doLogin()">로그인</button>
+        </div>
+        <p class="muted" id="loginMsg" style="margin-top:10px;"></p>
+      </div>
+    </div>
+
+    <div id="employeeView" class="hidden">
+      <div class="top-bar">
+        <h1 id="empGreeting">출장 기록 입력</h1>
+        <span id="appVersionBadge1" style="font-size:12px;color:#22c55e;cursor:pointer;" onclick="showWhatsNewModal()" title="업데이트 내역 다시 보기"></span>
+        <button class="btn-primary" onclick="completeTodayLedger()">오늘 장부 작성 완료</button>
+        <button class="btn-outline" onclick="logout()">로그아웃</button>
+      </div>
+      <div class="tabs">
+        <button class="tab-btn active" id="empTabBtn-input" onclick="showEmpTab('input')">기록 입력</button>
+        <button class="tab-btn" id="empTabBtn-incentive" onclick="showEmpTab('incentive')">내 인센티브</button>
+        <button class="tab-btn" id="empTabBtn-unpaid" onclick="showEmpTab('unpaid')">미수금</button>
+        <button class="tab-btn" id="empTabBtn-search" onclick="showEmpTab('search')">장부 검색</button>
+        <button class="tab-btn" id="empTabBtn-album" onclick="showEmpTab('album')">공유 앨범</button>
+        <button class="tab-btn" id="empTabBtn-changelog" onclick="showEmpTab('changelog')">업데이트 내역</button>
+      </div>
+
+      <div id="empTab-input">
+      <div class="card">
+        <div style="padding:10px;border:1px dashed var(--border);border-radius:8px;background:#fafbfc;margin-bottom:6px;">
+          <strong style="font-size:13px;">이전 기록 불러와 복사</strong>
+          <div class="row" style="margin-top:6px;">
+            <input id="f_prevKw" placeholder="전화번호/주소/내용으로 검색" style="flex:2;" onkeydown="if(event.key==='Enter'){event.preventDefault();doPrevSearch('f');}" />
+            <button class="btn-outline" style="flex:1;" onclick="doPrevSearch('f')">검색</button>
+          </div>
+          <div id="f_prevResult" style="margin-top:6px;"></div>
+        </div>
+        <div class="row">
+          <div>
+            <label>날짜</label>
+            <input id="f_date" type="date" />
+          </div>
+          <div>
+            <label>받은 금액(원)</label>
+            <input id="f_amount" type="text" inputmode="numeric" placeholder="150,000" oninput="onMoneyInput(this); recalcEAmount('f')" />
+          </div>
+        </div>
+        <div class="row" style="align-items:center;">
+          <label style="display:flex;align-items:center;gap:6px;flex:1;margin-top:0;">
+            <input type="checkbox" id="f_vatSeparate" style="width:auto;" onchange="recalcEAmount('f')" /> 부가세 별도(110%)
+          </label>
+          <div style="flex:1;">
+            <label style="margin-top:0;">청구금액(자동, 수정가능)</label>
+            <input id="f_eAmount" type="text" inputmode="numeric" placeholder="자동 계산" oninput="onMoneyInput(this); recalcMargin('f')" />
+          </div>
+        </div>
+        <label>주소</label>
+        <input id="f_address" placeholder="예: 중구 다산로 32 25동 1308호" />
+        <div style="margin-top:14px;padding:14px;border:2px solid var(--primary);border-radius:10px;background:#f8fafc;">
+          <label style="margin-top:0;font-size:14px;font-weight:700;color:var(--text);">작업 내용</label>
+          <input id="f_content" placeholder="예: TM700 도어락 설치" />
+
+          <div style="margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fafbfc;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <strong style="font-size:14px;">사용 자재</strong>
+            </div>
+
+            <div style="margin-top:10px;padding:10px;border:1px solid #dbeafe;border-radius:8px;background:#eff6ff;">
+              <div style="font-size:12px;font-weight:700;color:#1d4ed8;">① 재고에서 선택</div>
+              <div class="muted" style="font-size:11px;margin-top:2px;">대분류 → 소분류 선택 (단가 자동, 부가세 제외)</div>
+              <div class="row" style="margin-top:8px;">
+                <select id="f_major" style="flex:1;" onchange="onMajorChange('f')"><option value="">대분류...</option></select>
+                <div style="flex:2;position:relative;">
+                  <input id="f_minor" style="width:100%;" placeholder="소분류 (클릭/입력)" autocomplete="off"
+                         oninput="onMinorInput('f')" onfocus="showMinorDropdown('f')" />
+                  <div id="f_minorDrop" class="ac-dropdown hidden"></div>
+                </div>
+              </div>
+              <div class="row" style="margin-top:6px;">
+                <input id="f_matPrice" type="number" style="flex:2;" placeholder="단가 (부가세 제외, 자동/수정가능)" />
+                <input id="f_stockQty" type="number" value="1" min="1" style="flex:1;" placeholder="수량" />
+                <button class="btn-outline" style="flex:1;" onclick="addStockLine('f')">담기</button>
+              </div>
+            </div>
+
+            <div style="margin-top:10px;padding:10px;border:1px solid #fde68a;border-radius:8px;background:#fffbeb;">
+              <div style="font-size:12px;font-weight:700;color:#b45309;">② 재고에 없는 자재 직접 입력</div>
+              <div class="row" style="margin-top:8px;">
+                <div style="flex:2;position:relative;">
+                  <input id="f_customMat" style="width:100%;" placeholder="재고에 없는 자재명 직접 입력" autocomplete="off"
+                         oninput="onCustomMatInput('f')" onfocus="onCustomMatInput('f')" />
+                  <div id="f_customMatDrop" class="ac-dropdown hidden"></div>
+                </div>
+                <input id="f_customQty" type="number" value="1" min="1" style="flex:1;" placeholder="수량" />
+              </div>
+              <div class="row" style="margin-top:6px;">
+                <input id="f_customPrice" type="number" style="flex:1;" placeholder="단가 (부가세 제외)" />
+                <select id="f_customPriceType" style="flex:1;">
+                  <option value="vat">세금계산서(부가세 별도)</option>
+                  <option value="cash">현금가(계산서 없음)</option>
+                </select>
+              </div>
+              <div class="row" style="margin-top:6px;">
+                <input id="f_customSource" style="flex:2;" placeholder="구매처/출처 (예: 쿠팡, oo철물점)" />
+                <button class="btn-outline" style="flex:1;" onclick="addCustomLine('f')">직접 추가</button>
+              </div>
+            </div>
+
+            <div id="f_matList" style="margin-top:10px;"></div>
+          </div>
+
+          <div style="margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fafbfc;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <strong style="font-size:14px;">③ 부대비용 (주차비 등)</strong>
+              <span class="muted" style="font-size:12px;">원가에 합산됩니다</span>
+            </div>
+            <div class="row" style="margin-top:8px;">
+              <input id="f_extraName" style="flex:2;" placeholder="항목 (예: 주차비)" />
+              <input id="f_extraAmount" type="number" style="flex:1;" placeholder="금액" />
+              <button class="btn-outline" style="flex:1;" onclick="addExtraLine()">추가</button>
+            </div>
+            <div id="f_extraList" style="margin-top:10px;"></div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label>④ 원가(원) — 자재(부가세 제외)+부대비용 자동 합산, 수정 가능</label>
+              <input id="f_cost" type="text" inputmode="numeric" placeholder="80,000" oninput="onMoneyInput(this); recalcMargin('f')" />
+            </div>
+            <div>
+              <label>⑤ 마진(원) — 받은 금액(부가세 제외) − 원가, 자동계산</label>
+              <input id="f_margin" type="text" readonly style="background:#f1f5f9;" />
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>입금 형태</label>
+            <select id="f_payType">
+              <option>입금</option>
+              <option>현금</option>
+              <option>카드</option>
+              <option>세금계산서</option>
+              <option>무상</option>
+            </select>
+          </div>
+          <div>
+            <label>확인 여부</label>
+            <select id="f_confirmed">
+              <option>아니오</option>
+              <option>예</option>
+            </select>
+          </div>
+        </div>
+        <label>사업자등록증 사진 (세금계산서 발행시, 선택)</label>
+        <div class="dropzone" ondragover="onDropzoneOver(event)" ondragleave="onDropzoneLeave(event)" ondrop="onDropzoneDrop(event,'f_bizRegFile')">
+          <input id="f_bizRegFile" type="file" accept="image/*,application/pdf" />
+          <p class="dropzone-hint">클릭해서 선택하거나, 파일을 여기로 끌어다 놓으세요</p>
+        </div>
+        <input id="f_bizEmail" type="email" placeholder="세금계산서 받을 이메일 (선택)" style="margin-top:4px;" />
+        <div id="f_mediaInputWrap">
+          <label>현장 사진/영상 (선택, 여러 장 가능)</label>
+          <div class="dropzone" ondragover="onDropzoneOver(event)" ondragleave="onDropzoneLeave(event)" ondrop="onDropzoneDrop(event,'f_mediaFiles')">
+            <input id="f_mediaFiles" type="file" accept="image/*,video/*" multiple />
+            <p class="dropzone-hint">클릭해서 선택하거나, 파일을 여기로 끌어다 놓으세요 (여러 장 가능)</p>
+          </div>
+        </div>
+        <label>비고 (전화번호 등)</label>
+        <input id="f_note" placeholder="010-0000-0000 고객명" />
+        <label>출처</label>
+        <div style="position:relative;">
+          <input id="f_source" placeholder="예: 숨고 / 관리 / 당근" autocomplete="off" oninput="onSourceInput('f')" onfocus="showSourceDropdown('f')" />
+          <div id="f_sourceDrop" class="ac-dropdown hidden"></div>
+        </div>
+
+        <div style="margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fafbfc;">
+          <strong style="font-size:13px;">견적서/거래명세서 연결 (선택)</strong>
+          <p class="muted" style="margin:4px 0;font-size:12px;">이미 작성해 둔 문서가 있으면 거래처명으로 검색해서 연결하세요. (등록/수정 저장 시 함께 연결됩니다)</p>
+          <div id="f_docLinkPicked" class="hidden" style="font-size:13px;margin-bottom:6px;">
+            <span id="f_docLinkPickedText"></span>
+            <a id="f_docLinkOpenBtn" href="#" target="_blank" class="btn-outline" style="padding:2px 8px;font-size:12px;text-decoration:none;">열기</a>
+            <button class="btn-outline" style="padding:2px 8px;font-size:12px;" onclick="clearEDocLink('f')">연결 해제</button>
+          </div>
+          <div id="f_docLinkSearchWrap" class="row">
+            <input id="f_docLinkKw" placeholder="연결할 문서 검색 (거래처명)" style="flex:2;" onkeydown="if(event.key==='Enter'){event.preventDefault();doEDocLinkSearch('f');}" />
+            <button class="btn-outline" style="flex:1;" onclick="doEDocLinkSearch('f')">검색</button>
+          </div>
+          <div id="f_docLinkResult" style="margin-top:6px;"></div>
+        </div>
+
+        <div id="f_editBanner" class="hidden" style="margin-top:14px;padding:10px 12px;border-radius:8px;background:#eef6ff;color:#1d4ed8;font-size:13px;">
+          ✏️ <span id="f_editWho">기존 기록</span>을 수정하는 중입니다.
+          <div id="f_editMeta" style="margin-top:4px;font-size:12px;opacity:.85;"></div>
+        </div>
+
+        <div id="f_editExtras" class="hidden" style="margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fafbfc;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong style="font-size:13px;">기존 첨부 사진/영상</strong>
+            <button class="btn-outline" style="padding:4px 10px;font-size:12px;" onclick="openMediaModal(editState.rowIndex)">확인 / 추가</button>
+          </div>
+          <p class="muted" style="margin:4px 0 0;font-size:12px;">이미 첨부된 사진을 확인하려면 누르세요. 새 사진은 위 "현장 사진/영상"란에 끌어다 놓고 저장하면 됩니다(여기서 추가하면 저장 버튼 없이 바로 반영).</p>
+        </div>
+
+        <div style="margin-top:16px;">
+          <button class="btn-primary" style="width:100%" id="f_submitBtn" onclick="submitEntry()">기록 등록</button>
+        </div>
+        <div id="f_editButtons" class="hidden row" style="margin-top:8px;">
+          <button class="btn-outline" onclick="cancelEdit('f')">취소</button>
+          <button class="btn-danger" onclick="deleteEditingRow('f')">이 기록 삭제</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="muted" style="margin-top:0;">오늘 등록한 기록 (탭하면 수정 가능 · 다음날부터는 관리자만 수정 가능)</p>
+        <div id="myRecent" class="muted">불러오는 중...</div>
+      </div>
+      </div>
+
+      <div id="empTab-incentive" class="hidden">
+        <div class="card">
+          <div class="row" style="align-items:center;margin-bottom:10px;">
+            <strong style="flex:1;">내 인센티브 (월별)</strong>
+            <input id="empIncMonth" type="month" style="flex:1;" onchange="loadMyIncentives()" />
+          </div>
+          <div id="empIncTotal" class="muted" style="margin-bottom:8px;"></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>날짜</th><th>주소</th><th>내용</th><th>부제</th><th>인센율</th><th>인센티브</th></tr></thead>
+              <tbody id="empIncBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 직원용 미수금: 본인 출장건만, 열람 전용(수정·완료 없음). 완료 처리는 관리자 대시보드에서만 한다. -->
+      <div id="empTab-unpaid" class="hidden">
+        <div class="card">
+          <div class="row" style="align-items:center;margin-bottom:6px;">
+            <strong style="flex:1;">내 미수금 (입금 미확인)</strong>
+            <!-- flex:0 0 auto가 없으면 전역 `.row > *{flex:1}`에 걸려 버튼이 가로로 길게 늘어난다 -->
+            <button class="btn-outline" style="flex:0 0 auto;padding:4px 12px;font-size:12px;white-space:nowrap;" onclick="loadMyUnpaid()">🔄 새로고침</button>
+          </div>
+          <p class="muted" style="margin-top:0;margin-bottom:8px;font-size:12px;">
+            내가 출장 간 건 중 아직 입금이 확인되지 않은 목록입니다. 입금 확인 처리는 관리자가 합니다.
+          </p>
+          <div id="empUnpaidTotal" class="muted" style="margin-bottom:8px;"></div>
+          <div class="table-wrap">
+            <table style="table-layout:fixed;">
+              <!-- 장부 A~K열을 그대로 보여준다(L 원가·M 마진은 직원 화면에서 제외) -->
+              <thead><tr>
+                <th style="width:76px;white-space:nowrap;">날짜</th>
+                <th style="width:32px;white-space:nowrap;">요일</th>
+                <th style="width:170px;">주소</th>
+                <th style="width:170px;">내용</th>
+                <th style="width:84px;white-space:nowrap;">금액</th>
+                <th style="width:84px;white-space:nowrap;">부제</th>
+                <th style="width:60px;">출장자</th>
+                <th style="width:40px;white-space:nowrap;">형태</th>
+                <th style="width:40px;white-space:nowrap;">확인</th>
+                <th style="width:120px;">비고</th>
+                <th style="width:56px;">출처</th>
+              </tr></thead>
+              <tbody id="empUnpaidBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="empTab-search" class="hidden">
+        <div class="card">
+          <strong>장부 검색</strong>
+          <p class="muted" style="margin-top:4px;">전화번호·주소·내용의 일부를 입력하면 해당 기록을 찾아줍니다.</p>
+          <div class="row search-flt" style="margin-top:8px;">
+            <input id="empSearchKw" placeholder="예: 1234 (전화 뒷자리) / 다산로 / 도어락" onkeydown="if(event.key==='Enter')doEmpSearch()" />
+            <div class="msf"><button type="button" class="msf-btn" id="empAgentFilter_btn" onclick="msfToggle_('empAgentFilter')">전체 출장자</button><div class="msf-panel" id="empAgentFilter_panel"></div></div>
+            <div class="msf"><button type="button" class="msf-btn" id="empPayFilter_btn" onclick="msfToggle_('empPayFilter')">전체 입금형태</button><div class="msf-panel" id="empPayFilter_panel"></div></div>
+            <div class="msf"><button type="button" class="msf-btn" id="empSourceFilter_btn" onclick="msfToggle_('empSourceFilter')">전체 출처</button><div class="msf-panel" id="empSourceFilter_panel"></div></div>
+            <button class="btn-primary" onclick="doEmpSearch()">검색</button>
+          </div>
+          <div id="empSearchResult" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+          <strong>최근 7일 장부</strong>
+          <p class="muted" style="margin-top:4px;">더 이전 기록은 위 검색을 이용하세요.</p>
+          <div id="empRecentWeekWrap" class="table-wrap" style="max-height:420px;overflow-y:auto;">
+            <table style="table-layout:fixed;">
+              <thead><tr>
+                <th style="width:76px;white-space:nowrap;">날짜</th><th style="width:200px;">주소</th><th style="width:200px;">내용</th>
+                <th style="width:92px;white-space:nowrap;">금액</th><th style="width:70px;">출장자</th><th style="width:40px;white-space:nowrap;">입금</th><th style="width:50px;">출처</th><th style="width:56px;"></th>
+              </tr></thead>
+              <tbody id="empRecentWeekBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div id="empTab-album" class="hidden">
+        <div class="card">
+          <strong>공유 앨범</strong>
+          <p class="muted" style="margin-top:4px;">사진·영상·자료를 종류별로 모아 함께 봅니다. 카테고리를 선택하세요.</p>
+          <div id="e_albumCats" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+          <div id="e_albumUploadWrap" class="hidden" style="margin-top:12px;padding:10px;border:1px dashed var(--border);border-radius:8px;background:#fafbfc;">
+            <strong id="e_albumCatTitle" style="font-size:14px;"></strong>
+            <div style="margin-top:6px;">
+              <input type="file" accept="image/*,video/*,application/pdf" multiple onchange="handleAlbumFiles(this)" />
+            </div>
+            <div id="e_albumStatus" class="muted" style="margin-top:6px;font-size:12px;"></div>
+            <div id="e_albumProgressWrap" class="upload-progress-wrap hidden">
+              <div class="upload-progress-track"><div id="e_albumProgressFill" class="upload-progress-fill"></div></div>
+              <div id="e_albumProgressPct" class="upload-progress-pct">0%</div>
+            </div>
+          </div>
+          <div id="e_albumGrid" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;"></div>
+          <button id="e_albumMoreBtn" class="btn-outline hidden" style="width:100%;margin-top:10px;" onclick="loadAlbumPage(false)">더 보기</button>
+        </div>
+      </div>
+
+      <div id="empTab-changelog" class="hidden">
+        <div class="card">
+          <strong>업데이트 내역</strong>
+          <p class="muted" style="margin-top:4px;">앱이 그동안 어떻게 바뀌어왔는지 최신 순으로 보여줍니다.</p>
+        </div>
+        <div id="empTab-changelog-body" style="margin-top:10px;"></div>
+      </div>
+    </div>
+
+    <div id="adminView" class="hidden">
+      <div class="top-bar">
+        <h1>📊 관리자 대시보드 <span id="appVersionBadge2" style="font-size:12px;color:#22c55e;font-weight:normal;cursor:pointer;" onclick="showWhatsNewModal()" title="업데이트 내역 다시 보기"></span>
+          <span id="loadTimeBadge" class="muted" style="font-size:11px;font-weight:normal;" title="화면 = 앱 화면이 뜨기까지 / 데이터 = 그 뒤 대시보드 숫자가 채워지기까지"></span></h1>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="branchSelect" class="hidden" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;" onchange="switchBranch(this.value)">
+            <option value="">본사</option>
+            <option value="인천">인천지점</option>
+            <option value="남양주">남양주지점</option>
+          </select>
+            <button class="btn-primary" onclick="completeIntegratedLedger()">작성완료</button>
+          <button class="btn-outline" onclick="logout()">로그아웃</button>
+        </div>
+      </div>
+      <div class="tabs">
+        <button class="tab-btn tab-btn-primary active" id="tabBtn-dash" onclick="showAdminTab('dash')">대시보드</button>
+        <button class="tab-btn tab-btn-primary" id="tabBtn-input" onclick="showAdminTab('input')">기록 입력</button>
+        <button class="tab-btn tab-btn-primary" id="tabBtn-cal" onclick="showAdminTab('cal')">캘린더</button>
+        <button class="tab-btn tab-btn-primary" id="tabBtn-incentive" onclick="showAdminTab('incentive')">인센티브 관리</button>
+        <button class="tab-btn" id="tabBtn-search" onclick="showAdminTab('search')">장부 검색</button>
+        <button class="tab-btn" id="tabBtn-album" onclick="showAdminTab('album')">공유 앨범</button>
+        <button class="tab-btn" id="tabBtn-docs" onclick="showAdminTab('docs')">견적서·거래명세서 관리</button>
+        <button class="tab-btn" id="tabBtn-stock" onclick="showAdminTab('stock')">재고·단가 관리</button>
+        <button class="tab-btn" id="tabBtn-doorlock" onclick="showAdminTab('doorlock')">도어락 가격표</button>
+        <button class="tab-btn" id="tabBtn-vehicle" onclick="showAdminTab('vehicle')">차량관리</button>
+        <button class="tab-btn" id="tabBtn-blogreq" onclick="showAdminTab('blogreq')">✍️ 블로그 요청</button>
+        <button class="tab-btn" id="tabBtn-users" onclick="showAdminTab('users')">사용자 관리</button>
+        <button class="tab-btn tab-btn-stats" id="tabBtn-stats" onclick="showAdminTab('stats')">📊 통계</button>
+        <button class="tab-btn" id="tabBtn-changelog" onclick="showAdminTab('changelog')">업데이트 내역</button>
+      </div>
+
+      <div id="adminTab-dash">
+        <div class="card" style="margin-bottom:14px;">
+          <div class="row" style="align-items:center;">
+            <strong style="flex:1;">문서 작성</strong>
+            <button class="btn-primary" style="flex:1;" onclick="openDocModal('estimate')">📄 견적서 작성</button>
+            <button class="btn-primary" style="flex:1;" onclick="openDocModal('statement')">📋 거래명세서 작성</button>
+          </div>
+        </div>
+        <div id="dashSummary" class="row" style="gap:10px;flex-wrap:wrap;margin-bottom:14px;"></div>
+        <div class="card" id="dashTrendCard">
+          <strong>최근 7일 매출·마진 추이</strong>
+          <div id="dashTrend" style="margin-top:12px;"></div>
+        </div>
+        <div class="card hidden" id="dashBranchTrendCard">
+          <strong>지사별 최근 7일 매출·마진 추이</strong>
+          <div id="dashBranchTrendLegend" style="margin-top:8px;font-size:12px;"></div>
+          <div id="dashBranchTrendBody" style="margin-top:10px;"></div>
+        </div>
+        <div class="card">
+          <strong>오늘 직원별 실적</strong>
+          <div id="dashTodayAgents" style="margin-top:8px;"></div>
+        </div>
+        <div class="card">
+          <strong>이번 달 직원별 실적 (인센티브 포함)</strong>
+          <div id="dashAgents" style="margin-top:8px;"></div>
+        </div>
+        <div class="card">
+          <div class="row" style="align-items:flex-start;flex-wrap:wrap;">
+            <div style="flex:1;min-width:280px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <strong>세금계산서 (미발급)</strong>
+                <span>
+                  <span id="dashTaxCount" class="muted"></span>
+                  <a href="https://www.hometax.go.kr" target="_blank" rel="noopener" class="btn-outline" style="display:inline-block;padding:5px 10px;font-size:12px;text-decoration:none;margin-left:6px;">홈택스 바로가기 ↗</a>
+                </span>
+              </div>
+              <div class="table-wrap" style="margin-top:8px;">
+                <table>
+                  <thead><tr><th>날짜</th><th>주소</th><th>내용</th><th>금액</th><th>출장자</th><th></th></tr></thead>
+                  <tbody id="dashTaxBody"></tbody>
+                </table>
+              </div>
+            </div>
+            <div style="flex:1;min-width:280px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <strong>현금 미수령</strong>
+                <span id="dashCashCount" class="muted"></span>
+              </div>
+              <div class="table-wrap" style="margin-top:8px;">
+                <table>
+                  <thead><tr><th>날짜</th><th>주소</th><th>내용</th><th>금액</th><th>출장자</th><th></th></tr></thead>
+                  <tbody id="dashCashBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+            <strong>입금 미확인 (미수금)</strong>
+            <span style="flex:1;"></span>
+            <span id="dashUnpaidTotal" class="muted"></span>
+            <!-- 속도를 위해 "이 위로는 다 처리됨" 지점부터만 훑는다(V52.61). 스프레드시트를 직접 고쳐서
+                 오래된 건이 다시 미확인이 된 경우엔 하루 한 번 자동 전체검사에서 잡히지만,
+                 당장 확인하고 싶을 때 쓰라고 둔 버튼이다. -->
+            <button class="btn-outline" style="padding:3px 10px;font-size:12px;white-space:nowrap;"
+                    onclick="doFullLedgerRescan(this)" title="오래된 미확인·미발급 건까지 장부 전체를 다시 훑습니다">🔄 전체 다시 확인</button>
+          </div>
+          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+            <div class="msf" style="min-width:120px;"><button type="button" class="msf-btn" id="dashUnpaidSourceFilter_btn" onclick="msfToggle_('dashUnpaidSourceFilter')">전체 출처</button><div class="msf-panel" id="dashUnpaidSourceFilter_panel"></div></div>
+            <div class="msf" style="min-width:120px;"><button type="button" class="msf-btn" id="dashUnpaidAgentFilter_btn" onclick="msfToggle_('dashUnpaidAgentFilter')">전체 출장자</button><div class="msf-panel" id="dashUnpaidAgentFilter_panel"></div></div>
+            <div class="msf" style="min-width:120px;"><button type="button" class="msf-btn" id="dashUnpaidPayFilter_btn" onclick="msfToggle_('dashUnpaidPayFilter')">전체 입금형태</button><div class="msf-panel" id="dashUnpaidPayFilter_panel"></div></div>
+          </div>
+          <div class="table-wrap" style="margin-top:8px;">
+            <table style="table-layout:fixed;">
+              <thead><tr>
+                <th style="width:76px;white-space:nowrap;">날짜</th>
+                <th style="width:190px;">주소</th>
+                <th style="width:190px;">내용</th>
+                <th style="width:60px;">출장자</th>
+                <th style="width:60px;">출처</th>
+                <th style="width:76px;white-space:nowrap;">금액</th>
+                <th style="width:36px;white-space:nowrap;">형태</th>
+                <th style="width:114px;">비고</th>
+                <th style="width:64px;"></th>
+              </tr></thead>
+              <tbody id="dashUnpaidBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="adminTab-input" class="hidden">
+        <div class="card">
+          <div style="padding:10px;border:1px dashed var(--border);border-radius:8px;background:#fafbfc;margin-bottom:6px;">
+            <strong style="font-size:13px;">이전 기록 불러와 복사</strong>
+            <div class="row" style="margin-top:6px;">
+              <input id="a_prevKw" placeholder="전화번호/주소/내용으로 검색" style="flex:2;" onkeydown="if(event.key==='Enter'){event.preventDefault();doPrevSearch('a');}" />
+              <button class="btn-outline" style="flex:1;" onclick="doPrevSearch('a')">검색</button>
+            </div>
+            <div id="a_prevResult" style="margin-top:6px;"></div>
+          </div>
+          <div class="row">
+            <div>
+              <label>날짜</label>
+              <input id="a_date" type="date" />
+            </div>
+            <div>
+              <label>받은 금액(원)</label>
+              <input id="a_amount" type="text" inputmode="numeric" placeholder="150,000" oninput="onMoneyInput(this); recalcEAmount('a')" />
+            </div>
+          </div>
+          <div class="row" style="align-items:center;">
+            <label style="display:flex;align-items:center;gap:6px;flex:1;margin-top:0;">
+              <input type="checkbox" id="a_vatSeparate" style="width:auto;" onchange="recalcEAmount('a')" /> 부가세 별도(110%)
+            </label>
+            <div style="flex:1;">
+              <label style="margin-top:0;">청구금액(자동, 수정가능)</label>
+              <input id="a_eAmount" type="text" inputmode="numeric" placeholder="자동 계산" oninput="onMoneyInput(this); recalcMargin('a')" />
+            </div>
+          </div>
+          <label>주소</label>
+          <input id="a_address" placeholder="예: 중구 다산로 32 25동 1308호" />
+          <div style="margin-top:14px;padding:14px;border:2px solid var(--primary);border-radius:10px;background:#f8fafc;">
+            <label style="margin-top:0;font-size:14px;font-weight:700;color:var(--text);">작업 내용</label>
+            <input id="a_content" placeholder="예: TM700 도어락 설치" />
+
+            <div style="margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fafbfc;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <strong style="font-size:14px;">사용 자재</strong>
+              </div>
+
+              <div style="margin-top:10px;padding:10px;border:1px solid #dbeafe;border-radius:8px;background:#eff6ff;">
+                <div style="font-size:12px;font-weight:700;color:#1d4ed8;">① 재고에서 선택</div>
+                <div class="muted" style="font-size:11px;margin-top:2px;">대분류 → 소분류 선택 (단가 자동, 부가세 제외)</div>
+                <div class="row" style="margin-top:8px;">
+                  <select id="a_major" style="flex:1;" onchange="onMajorChange('a')"><option value="">대분류...</option></select>
+                  <div style="flex:2;position:relative;">
+                    <input id="a_minor" style="width:100%;" placeholder="소분류 (클릭/입력)" autocomplete="off"
+                           oninput="onMinorInput('a')" onfocus="showMinorDropdown('a')" />
+                    <div id="a_minorDrop" class="ac-dropdown hidden"></div>
+                  </div>
+                </div>
+                <div class="row" style="margin-top:6px;">
+                  <input id="a_matPrice" type="number" style="flex:2;" placeholder="단가 (부가세 제외, 자동/수정가능)" />
+                  <input id="a_stockQty" type="number" value="1" min="1" style="flex:1;" placeholder="수량" />
+                  <button class="btn-outline" style="flex:1;" onclick="addStockLine('a')">담기</button>
+                </div>
+              </div>
+
+              <div style="margin-top:10px;padding:10px;border:1px solid #fde68a;border-radius:8px;background:#fffbeb;">
+                <div style="font-size:12px;font-weight:700;color:#b45309;">② 재고에 없는 자재 직접 입력</div>
+                <div class="row" style="margin-top:8px;">
+                  <div style="flex:2;position:relative;">
+                    <input id="a_customMat" style="width:100%;" placeholder="재고에 없는 자재명 직접 입력" autocomplete="off"
+                           oninput="onCustomMatInput('a')" onfocus="onCustomMatInput('a')" />
+                    <div id="a_customMatDrop" class="ac-dropdown hidden"></div>
+                  </div>
+                  <input id="a_customQty" type="number" value="1" min="1" style="flex:1;" placeholder="수량" />
+                </div>
+                <div class="row" style="margin-top:6px;">
+                  <input id="a_customPrice" type="number" style="flex:1;" placeholder="단가 (부가세 제외)" />
+                  <select id="a_customPriceType" style="flex:1;">
+                    <option value="vat">세금계산서(부가세 별도)</option>
+                    <option value="cash">현금가(계산서 없음)</option>
+                  </select>
+                </div>
+                <div class="row" style="margin-top:6px;">
+                  <input id="a_customSource" style="flex:2;" placeholder="구매처/출처 (예: 쿠팡, oo철물점)" />
+                  <button class="btn-outline" style="flex:1;" onclick="addCustomLine('a')">직접 추가</button>
+                </div>
+              </div>
+
+              <div id="a_matList" style="margin-top:10px;"></div>
+            </div>
+
+            <div style="margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fafbfc;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <strong style="font-size:14px;">③ 부대비용 (주차비 등)</strong>
+                <span class="muted" style="font-size:12px;">원가에 합산됩니다</span>
+              </div>
+              <div class="row" style="margin-top:8px;">
+                <input id="a_extraName" style="flex:2;" placeholder="항목 (예: 주차비)" />
+                <input id="a_extraAmount" type="number" style="flex:1;" placeholder="금액" />
+                <button class="btn-outline" style="flex:1;" onclick="addExtraLine('a')">추가</button>
+              </div>
+              <div id="a_extraList" style="margin-top:10px;"></div>
+            </div>
+
+            <div class="row">
+              <div>
+                <label>④ 원가(원) — 자재(부가세 제외)+부대비용 자동 합산, 수정 가능</label>
+                <input id="a_cost" type="text" inputmode="numeric" placeholder="80,000" oninput="onMoneyInput(this); recalcMargin('a')" />
+              </div>
+              <div>
+                <label>⑤ 마진(원) — 받은 금액(부가세 제외) − 원가, 자동계산</label>
+                <input id="a_margin" type="text" readonly style="background:#f1f5f9;" />
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label>입금 형태</label>
+              <select id="a_payType">
+                <option>입금</option>
+                <option>현금</option>
+                <option>카드</option>
+                <option>세금계산서</option>
+                <option>무상</option>
+              </select>
+            </div>
+            <div>
+              <label>확인 여부</label>
+              <select id="a_confirmed">
+                <option>아니오</option>
+                <option>예</option>
+              </select>
+            </div>
+          </div>
+          <label>사업자등록증 사진 (세금계산서 발행시, 선택)</label>
+          <div class="dropzone" ondragover="onDropzoneOver(event)" ondragleave="onDropzoneLeave(event)" ondrop="onDropzoneDrop(event,'a_bizRegFile')">
+            <input id="a_bizRegFile" type="file" accept="image/*,application/pdf" />
+            <p class="dropzone-hint">클릭해서 선택하거나, 파일을 여기로 끌어다 놓으세요</p>
+          </div>
+        <input id="a_bizEmail" type="email" placeholder="세금계산서 받을 이메일 (선택)" style="margin-top:4px;" />
+          <div id="a_mediaInputWrap">
+            <label>현장 사진/영상 (선택, 여러 장 가능)</label>
+            <div class="dropzone" ondragover="onDropzoneOver(event)" ondragleave="onDropzoneLeave(event)" ondrop="onDropzoneDrop(event,'a_mediaFiles')">
+              <input id="a_mediaFiles" type="file" accept="image/*,video/*" multiple />
+              <p class="dropzone-hint">클릭해서 선택하거나, 파일을 여기로 끌어다 놓으세요 (여러 장 가능)</p>
+            </div>
+          </div>
+          <label>비고 (전화번호 등)</label>
+          <input id="a_note" placeholder="010-0000-0000 고객명" />
+          <label>출처</label>
+          <div style="position:relative;">
+            <input id="a_source" placeholder="예: 숨고 / 관리 / 당근" autocomplete="off" oninput="onSourceInput('a')" onfocus="showSourceDropdown('a')" />
+            <div id="a_sourceDrop" class="ac-dropdown hidden"></div>
+          </div>
+
+          <div style="margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fafbfc;">
+            <strong style="font-size:13px;">견적서/거래명세서 연결 (선택)</strong>
+            <p class="muted" style="margin:4px 0;font-size:12px;">이미 작성해 둔 문서가 있으면 거래처명으로 검색해서 연결하세요. (등록/수정 저장 시 함께 연결됩니다)</p>
+            <div id="a_docLinkPicked" class="hidden" style="font-size:13px;margin-bottom:6px;">
+              <span id="a_docLinkPickedText"></span>
+              <a id="a_docLinkOpenBtn" href="#" target="_blank" class="btn-outline" style="padding:2px 8px;font-size:12px;text-decoration:none;">열기</a>
+              <button class="btn-outline" style="padding:2px 8px;font-size:12px;" onclick="clearEDocLink('a')">연결 해제</button>
+            </div>
+            <div id="a_docLinkSearchWrap" class="row">
+              <input id="a_docLinkKw" placeholder="연결할 문서 검색 (거래처명)" style="flex:2;" onkeydown="if(event.key==='Enter'){event.preventDefault();doEDocLinkSearch('a');}" />
+              <button class="btn-outline" style="flex:1;" onclick="doEDocLinkSearch('a')">검색</button>
+            </div>
+            <div id="a_docLinkResult" style="margin-top:6px;"></div>
+          </div>
+
+          <div id="a_editBanner" class="hidden" style="margin-top:14px;padding:10px 12px;border-radius:8px;background:#eef6ff;color:#1d4ed8;font-size:13px;">
+            ✏️ <span id="a_editWho">기존 기록</span>을 수정하는 중입니다.
+            <div id="a_editMeta" style="margin-top:4px;font-size:12px;opacity:.85;"></div>
+          </div>
+
+          <div id="a_editExtras" class="hidden">
+            <div style="margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fafbfc;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <strong style="font-size:13px;">현장 사진/영상</strong>
+                <button class="btn-outline" style="padding:4px 10px;font-size:12px;" onclick="openMediaModal(editState.rowIndex)">보기 / 추가</button>
+              </div>
+              <p class="muted" style="margin:4px 0 0;font-size:12px;">여기서 추가하면 저장 버튼 없이 바로 반영됩니다.</p>
+            </div>
+          </div>
+
+          <div style="margin-top:16px;">
+            <button class="btn-primary" style="width:100%" id="a_submitBtn" onclick="submitAdminEntry()">기록 등록</button>
+          </div>
+          <div id="a_editButtons" class="hidden row" style="margin-top:8px;">
+            <button class="btn-outline" onclick="cancelEdit('a')">취소</button>
+            <button class="btn-danger" onclick="deleteEditingRow('a')">이 기록 삭제</button>
+          </div>
+        </div>
+        <div class="card">
+          <p class="muted" style="margin-top:0;">오늘 등록한 기록 (탭하면 수정 가능)</p>
+          <div id="myRecentAdmin" class="muted">불러오는 중...</div>
+        </div>
+      </div>
+
+      <div id="adminTab-cal" class="hidden">
+        <div class="card">
+          <div class="top-bar">
+            <button class="btn-outline" onclick="shiftMonth(-1)">◀ 이전달</button>
+            <strong id="calMonthLabel"></strong>
+            <button class="btn-outline" onclick="shiftMonth(1)">다음달 ▶</button>
+          </div>
+          <div id="calMonthSummary" style="text-align:center;padding:8px;background:#f8fafc;border-radius:8px;margin-bottom:10px;font-size:14px;"></div>
+          <div class="row" style="margin-bottom:10px;align-items:center;">
+            <input id="sortDate" type="date" style="flex:1;" />
+            <button class="btn-outline" style="flex:1;" onclick="doSortDay()">이 날짜 출장자순 정렬</button>
+          </div>
+          <p class="muted" style="font-size:12px;margin-top:0;">선택한 날짜의 기록을 김승우 → 김영민 → 노휘래(사용자 등록 순서)로 재정렬하고 순수익 누계를 다시 계산합니다.</p>
+          <div class="cal-grid" id="calHead"></div>
+          <div class="cal-grid" id="calGrid" style="margin-top:6px;"></div>
+        </div>
+      </div>
+
+      <div id="adminTab-users" class="hidden">
+        <div class="card">
+          <p class="muted" style="margin-top:0;">새 사용자 추가 (직원/지사장에게 이름+PIN 전달)</p>
+          <div class="row">
+            <input id="newUserName" placeholder="이름" />
+            <input id="newUserPin" placeholder="PIN (숫자 4자리 권장)" />
+            <select id="newUserRole">
+              <option value="직원">직원</option>
+              <option value="관리자">관리자</option>
+              <option value="인천관리자">인천관리자</option>
+              <option value="남양주관리자">남양주관리자</option>
+              <option value="인천직원">인천직원</option>
+              <option value="남양주직원">남양주직원</option>
+            </select>
+            <button class="btn-primary" id="addUserBtn" onclick="addNewUser()">추가</button>
+            <button class="btn-outline hidden" id="cancelUserEditBtn" onclick="cancelUserEdit()">취소</button>
+          </div>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>이름</th><th>PIN</th><th>역할</th><th></th></tr></thead>
+            <tbody id="userTableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <strong>📧 알림 받을 이메일</strong>
+          <p class="muted" style="margin-top:4px;">
+            장부 작성완료·인센티브 확정·월정산·자재 재주문 알림을 이 주소로 보냅니다.
+            새 앱을 깔 필요 없이 폰의 지메일로 옵니다.<br>
+            <b>소리가 안 나면</b> 받는 사람 폰에서 지메일 앱 → 설정 → (해당 계정) → 알림을 <b>"전체"</b>로 바꿔주세요. 기본값이 "우선 알림만"이라 조용할 수 있습니다.
+          </p>
+          <div id="emailNotifyList" style="margin-top:10px;"></div>
+          <div id="emailNotifyQuota" class="muted" style="margin-top:8px;font-size:12px;"></div>
+        </div>
+
+        <div class="card">
+          <strong>나노바나나(Gemini) 썸네일 API 키</strong>
+          <p class="muted" style="margin-top:4px;">블로그 썸네일 자동생성에 사용됩니다. aistudio.google.com에서 발급받은 키를 저장하세요.</p>
+          <div class="row" style="margin-top:8px;">
+            <input id="geminiApiKey" type="password" placeholder="Gemini API 키" style="flex:2;" />
+            <button class="btn-outline" onclick="saveGeminiApiKey()">키 저장</button>
+          </div>
+          <div id="geminiKeyStatus" class="muted" style="margin-top:8px;font-size:13px;"></div>
+        </div>
+
+        <div class="card">
+          <strong>GPT-image(OpenAI) 썸네일 API 키</strong>
+          <p class="muted" style="margin-top:4px;">블로그 썸네일 자동생성에 사용됩니다. platform.openai.com에서 발급받은 키를 저장하세요.</p>
+          <div class="row" style="margin-top:8px;">
+            <input id="openaiApiKey" type="password" placeholder="OpenAI API 키" style="flex:2;" />
+            <button class="btn-outline" onclick="saveOpenAiApiKey()">키 저장</button>
+          </div>
+          <div id="openaiKeyStatus" class="muted" style="margin-top:8px;font-size:13px;"></div>
+        </div>
+
+        <div class="card">
+          <strong>네이버 블로그 자동발행</strong>
+          <p class="muted" style="margin-top:4px;">네이버 개발자센터에서 발급받은 Client ID/Secret을 먼저 저장하고, 사장님 네이버 계정으로 로그인 연동하면 이후로는 아래에서 바로 글을 발행할 수 있습니다.</p>
+          <div class="row" style="margin-top:8px;">
+            <input id="naverClientId" placeholder="Client ID" style="flex:1;" />
+            <input id="naverClientSecret" placeholder="Client Secret" style="flex:1;" />
+            <button class="btn-outline" onclick="saveNaverCreds()">저장</button>
+          </div>
+          <div class="row" style="align-items:center;margin-top:8px;">
+            <span id="naverLinkStatus" style="flex:1;" class="muted">연동 상태 확인 중...</span>
+            <button class="btn-outline" onclick="connectNaver()">네이버 로그인 연동하기</button>
+            <button class="btn-outline" onclick="testNaverPost(this)">테스트 발행</button>
+          </div>
+          <div id="naverLinkResult" class="muted" style="margin-top:6px;font-size:13px;"></div>
+          <div class="muted" style="margin-top:6px;font-size:11px;word-break:break-all;">디버그(실제 페이지 주소): <span id="naverDebugUrl"></span></div>
+
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+            <label>제목</label>
+            <input id="naverPostTitle" placeholder="블로그 글 제목" />
+            <label>본문</label>
+            <textarea id="naverPostContents" placeholder="블로그 글 내용 (줄바꿈 그대로 반영됩니다)" style="width:100%;min-height:140px;"></textarea>
+            <label>카테고리 번호 (선택, 비워두면 첫 번째 카테고리)</label>
+            <input id="naverPostCategory" type="number" placeholder="예: 1" />
+            <button class="btn-primary" style="width:100%;margin-top:8px;" onclick="publishNaverPost()">블로그에 발행</button>
+            <div id="naverPostResult" class="muted" style="margin-top:8px;font-size:13px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="adminTab-vehicle" class="hidden">
+        <div class="card">
+          <strong>차량 목록</strong>
+          <p class="muted" style="margin-top:4px;">'재고·단가 관리 → 위치 설정'에서 유형을 '차량'으로 등록한 항목이 여기 표시됩니다.</p>
+          <div id="vehicleCards" style="margin-top:10px;"></div>
+        </div>
+        <div class="card">
+          <div class="row" style="align-items:center;">
+            <strong style="flex:1;">차량별 월간 요약 (주유비·주행거리·연비 한눈에 보기)</strong>
+            <input id="vsum_month" type="month" style="flex:0 0 150px;" onchange="loadVehicleSummary()" />
+          </div>
+          <p class="muted" style="margin-top:4px;">연비(원/km)는 그 달 총 주유비를 주행거리로 나눈 값입니다. 주행거리는 이번달 말 총 킬로수 - 저번달 말 총 킬로수로 계산되며, 두 달 다 월말 킬로수가 입력돼 있어야 나옵니다.</p>
+          <div class="table-wrap" style="margin-top:10px;">
+            <table>
+              <thead><tr><th>차량</th><th>담당자</th><th>이번달 총 주유비</th><th>주행거리</th><th>연비(원/km)</th></tr></thead>
+              <tbody id="vsumBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <strong>주유대장 기록 추가</strong>
+          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+            <select id="fl_vehicle" style="flex:1;min-width:120px;"></select>
+            <input id="fl_date" type="date" style="flex:1;min-width:120px;" />
+            <select id="fl_kind" style="flex:1;min-width:110px;" onchange="onFuelKindChange()">
+              <option value="주유">주유 (금액 입력)</option>
+              <option value="킬로수">월말 총 킬로수</option>
+            </select>
+            <input id="fl_amount" type="number" placeholder="주유 금액" style="flex:1;min-width:110px;" />
+            <input id="fl_km" type="number" placeholder="총 킬로수" style="flex:1;min-width:110px;" class="hidden" />
+            <button class="btn-primary" onclick="addFuelLogEntry()">기록 추가</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="row" style="align-items:center;">
+            <strong style="flex:1;">주유대장 내역</strong>
+            <select id="fl_filterVehicle" style="flex:1;" onchange="loadFuelLogs()"></select>
+            <input id="fl_filterMonth" type="month" style="flex:1;" onchange="loadFuelLogs()" />
+          </div>
+          <div id="fuelSummary" class="row" style="gap:10px;flex-wrap:wrap;margin-top:10px;"></div>
+          <div class="table-wrap" style="margin-top:10px;">
+            <table>
+              <thead><tr><th>날짜</th><th>차량</th><th>구분</th><th>킬로수</th><th>주유금액</th><th>담당자</th><th></th></tr></thead>
+              <tbody id="fuelLogBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <strong>과태료 기록 추가</strong>
+          <p class="muted" style="margin-top:4px;">차량에 귀속되며, 인센티브 월정산 때 해당 차량 담당자의 인센티브에서 차감됩니다.</p>
+          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+            <select id="fine_vehicle" style="flex:1;min-width:120px;" onchange="onFineVehicleChange()"></select>
+            <input id="fine_date" type="date" style="flex:1;min-width:120px;" />
+            <input id="fine_amount" type="number" placeholder="과태료 금액" style="flex:1;min-width:110px;" />
+            <input id="fine_reason" placeholder="사유 (예: 신호위반)" style="flex:2;min-width:140px;" />
+            <button class="btn-primary" onclick="addFineEntry()">기록 추가</button>
+          </div>
+          <div id="fine_ownerHint" class="muted" style="margin-top:6px;"></div>
+        </div>
+        <div class="card">
+          <div class="row" style="align-items:center;">
+            <strong style="flex:1;">과태료 내역</strong>
+            <select id="fine_filterVehicle" style="flex:1;" onchange="loadFines()"></select>
+            <input id="fine_filterMonth" type="month" style="flex:1;" onchange="loadFines()" />
+          </div>
+          <div id="fineSummary" class="row" style="gap:10px;flex-wrap:wrap;margin-top:10px;"></div>
+          <div class="table-wrap" style="margin-top:10px;">
+            <table>
+              <thead><tr><th>날짜</th><th>차량</th><th>담당자</th><th>금액</th><th>사유</th><th></th></tr></thead>
+              <tbody id="fineBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="adminTab-stock" class="hidden">
+        <div class="card">
+          <strong>위치 설정 (차량·사무실·창고)</strong>
+          <p class="muted" style="margin-top:4px;">재고를 보관하는 위치를 관리합니다. '차량' 유형은 담당 직원 이름을 지정하면, 그 직원이 장부에서 '내 차'로 차감할 수 있습니다.</p>
+          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+            <input id="nl_name" placeholder="위치명 (예: 김승우차)" style="flex:1;min-width:110px;" />
+            <select id="nl_type" style="flex:1;min-width:90px;">
+              <option value="공용">공용 (사무실/창고)</option>
+              <option value="차량">차량 (직원별)</option>
+            </select>
+            <input id="nl_owner" placeholder="담당자 (차량일 때)" style="flex:1;min-width:90px;" />
+            <button class="btn-primary" onclick="addNewLocation()">위치 추가</button>
+          </div>
+          <div id="locationList" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="card">
+          <strong>자재 추가 (자재단가 + 재고현황에 동시 반영)</strong>
+          <p class="muted" style="margin-top:4px;">현금가로 매입한 경우 결제구분을 "현금가"로 두면 세액/금액은 비워둔 채 저장됩니다. 재고 수량은 0으로 등록되며, 이후 재고현황에서 별도로 조정하세요.</p>
+          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+            <input id="am_major" list="am_majorList" placeholder="대분류" style="flex:1;min-width:90px;" />
+            <datalist id="am_majorList"></datalist>
+            <input id="am_buyer" placeholder="매입처" style="flex:1;min-width:90px;" />
+            <input id="am_brand" placeholder="브랜드" style="flex:1;min-width:90px;" />
+            <input id="am_type" placeholder="타입" style="flex:1;min-width:90px;" />
+          </div>
+          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+            <input id="am_name" placeholder="제품명" style="flex:2;min-width:160px;" />
+            <select id="am_payType" style="flex:1;min-width:110px;" onchange="onPayTypeChange()">
+              <option value="vat">세금계산서</option>
+              <option value="cash">현금가</option>
+            </select>
+          </div>
+          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+            <input id="am_supply" type="number" placeholder="공급가(부가세 제외)" style="flex:1;min-width:100px;" oninput="onSupplyChange()" />
+            <input id="am_tax" type="number" placeholder="세액" style="flex:1;min-width:100px;" />
+            <input id="am_amount" type="number" placeholder="금액(부가세 포함)" style="flex:1;min-width:100px;" />
+          </div>
+          <div style="margin-top:8px;"><button class="btn-primary" onclick="addNewMaterial()">자재 추가</button></div>
+        </div>
+
+        <div class="card">
+          <strong>재고현황 (장부에서 선택되는 자재)</strong>
+          <p class="muted" style="margin-top:4px;">대분류 → 소분류 → 매입처 → 공급가(부가세 제외) → 금액(부가세 포함), 그리고 각 위치별 보유수량. 장부에서 자재 선택 시 원가는 항상 공급가(부가세 제외)를 씁니다.</p>
+          <input id="stockSearchInput" placeholder="🔍 품목 검색 (띄어쓰기 무시, 예: 도어클로저)" style="margin-top:10px;width:100%;" oninput="renderStockTable()" />
+          <div class="table-wrap" style="margin-top:12px;">
+            <table class="mat-table">
+              <thead id="stockTableHead"></thead>
+              <tbody id="stockTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <strong>자재단가 (단가 참고용 마스터)</strong>
+          <p class="muted" style="margin-top:4px;">보유 여부와 무관한 단가 기록. 위 폼으로 등록하거나, 장부에서 직접 기재한 자재가 자동 누적됩니다.</p>
+          <input id="priceSearchInput" placeholder="🔍 품목 검색 (띄어쓰기 무시, 예: 도어클로저)" style="margin-top:10px;width:100%;" oninput="renderPriceTable()" />
+          <div class="table-wrap" style="margin-top:12px;">
+            <table class="mat-table">
+              <thead><tr>
+                <th>매입처</th><th>브랜드</th><th class="col-div">타입</th>
+                <th>제품명</th><th>공급가</th><th>세액</th><th class="col-div">금액</th>
+                <th>등록일</th><th>등록자</th><th></th>
+              </tr></thead>
+              <tbody id="priceTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="adminTab-doorlock" class="hidden">
+        <div class="card">
+          <strong>도어락 가격표 관리</strong>
+          <p class="muted" style="margin-top:4px;">카테고리별로 도어락 제품을 등록·수정하고 제품 사진을 올려둘 수 있습니다. 지점마다 별도로 관리되며(상단 지점 선택), 직원 화면에는 노출되지 않습니다.</p>
+          <div id="dcCategoryTabs" class="row" style="margin-top:10px;flex-wrap:wrap;gap:6px;"></div>
+          <div class="row" style="margin-top:10px;flex-wrap:wrap;gap:6px;align-items:center;">
+            <button class="btn-outline" id="dcCatUpBtn" style="padding:4px 10px;font-size:12px;" onclick="moveDoorlockCategory('up')" title="선택한 카테고리를 앞으로">◀ 앞으로</button>
+            <button class="btn-outline" id="dcCatDownBtn" style="padding:4px 10px;font-size:12px;" onclick="moveDoorlockCategory('down')" title="선택한 카테고리를 뒤로">뒤로 ▶</button>
+            <span class="muted" id="dcCatPos" style="font-size:12px;"></span>
+            <span style="flex:1;"></span>
+            <button class="btn-outline" style="padding:4px 10px;font-size:12px;" onclick="toggleDoorlockCategoryAdd(true)">＋ 카테고리 추가</button>
+            <button class="btn-danger" id="dcCatDelBtn" style="padding:4px 10px;font-size:12px;" onclick="deleteDoorlockCategory()">🗑 카테고리 삭제</button>
+          </div>
+          <div class="row hidden" id="dcCatAddRow" style="margin-top:8px;gap:6px;flex-wrap:wrap;">
+            <input id="dcCatNewName" placeholder="새 카테고리 이름 (예: 유리문 디지털 도어락)" style="flex:1;min-width:180px;" onkeydown="if(event.key==='Enter')submitDoorlockCategory()" />
+            <button class="btn-primary" style="padding:4px 14px;font-size:12px;" onclick="submitDoorlockCategory()">추가</button>
+            <button class="btn-outline" style="padding:4px 14px;font-size:12px;" onclick="toggleDoorlockCategoryAdd(false)">취소</button>
+          </div>
+
+          <!-- 여러 카테고리 가격표를 한 번에 만들기(2026-08-01 사용자 요청). 체크한 것만 차례로 생성한다. -->
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+            <strong style="font-size:13px;">가격표 이미지 한번에 만들기</strong>
+            <div id="dcBulkPick" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:10px 14px;"></div>
+            <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+              <button class="btn-outline" style="padding:4px 10px;font-size:12px;" onclick="dcBulkSelectAll(true)">전체 선택</button>
+              <button class="btn-outline" style="padding:4px 10px;font-size:12px;" onclick="dcBulkSelectAll(false)">전체 해제</button>
+              <button class="btn-primary" id="dcBulkGenBtn" style="padding:4px 14px;font-size:12px;" onclick="generateDoorlockBulkImages()">🖼 선택한 카테고리 한번에 생성</button>
+            </div>
+            <div id="dcBulkProgress" style="margin-top:8px;"></div>
+          </div>
+        </div>
+
+        <!-- 제품 목록(사진 그리드)을 등록 폼보다 위에 둔다 — 탭을 열면 지금 등록된 제품과 최종 가격표를
+             먼저 보게 되고, 새로 넣거나 고칠 때만 아래 폼으로 내려가면 된다(2026-07-31 사용자 요청). -->
+        <div class="card">
+          <div class="row" style="align-items:center;">
+            <strong id="dcGridTitle" style="flex:1;">제품 목록</strong>
+            <button class="btn-outline" id="dcGenBtn" onclick="generateDoorlockCategoryImage()">🖼 이 카테고리 이미지로 생성</button>
+          </div>
+          <div id="dcGenResult" style="margin-top:8px;"></div>
+          <div id="dcItemGrid" class="row" style="margin-top:12px;flex-wrap:wrap;gap:10px;"></div>
+        </div>
+
+        <div class="card">
+          <strong id="dcFormTitle">제품 등록</strong>
+          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+            <input id="dc_category" list="dc_categoryList" placeholder="카테고리 (예: 방화문 디지털 도어락)" style="flex:2;min-width:200px;" />
+            <datalist id="dc_categoryList"></datalist>
+            <input id="dc_brand" placeholder="브랜드" style="flex:1;min-width:100px;" />
+            <input id="dc_model" placeholder="모델명" style="flex:1;min-width:100px;" />
+          </div>
+          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+            <input id="dc_type" placeholder="개폐타입 (예: 번호+카드+지문)" style="flex:2;min-width:160px;" />
+            <input id="dc_listPrice" type="number" placeholder="정가" oninput="dcSyncDiscount_()" style="flex:1;min-width:100px;" />
+            <input id="dc_salePrice" type="number" placeholder="판매가" oninput="dcSyncDiscount_()" style="flex:1;min-width:100px;" />
+            <input id="dc_discount" placeholder="할인율 (자동)" readonly title="정가와 판매가를 넣으면 자동으로 계산됩니다" style="flex:1;min-width:100px;background:#f1f3f5;color:#495057;" />
+          </div>
+          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+            <input id="dc_note" placeholder="비고" style="flex:1;min-width:160px;" />
+          </div>
+          <p class="muted" id="dcImageHint" style="margin-top:8px;">사진은 저장 후 목록에서 "수정"을 눌러 추가할 수 있습니다.</p>
+          <div class="row hidden" id="dcImageRow" style="margin-top:8px;align-items:center;flex-wrap:wrap;gap:8px;">
+            <input type="file" id="dc_imageInput" accept="image/*" onchange="handleDoorlockImageUpload(this)" style="flex:1;min-width:160px;" />
+            <div id="dcImagePreview" style="width:60px;height:60px;border-radius:8px;overflow:hidden;background:#f1f3f5;display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 auto;">🔒</div>
+          </div>
+          <div class="row" style="margin-top:10px;gap:8px;">
+            <button class="btn-primary" onclick="saveDoorlockItem()">저장</button>
+            <button class="btn-outline hidden" id="dcCancelEditBtn" onclick="cancelDoorlockEdit()">수정 취소</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="adminTab-incentive" class="hidden">
+        <div class="card">
+          <strong>인센티브 관리</strong>
+          <p class="muted" style="margin-top:4px;">관리자 본인은 제외됩니다. 항목을 클릭하면 인센티브율(%)과 부제원가를 입력할 수 있어요(입력해도 바로 저장되지 않고 화면에만 반영됨, 노란 배경=저장 대기중). 인센티브 = ROUND((부제 − 부제원가) × 인센티브율, 천원단위). 다 입력했으면 "작성완료"를 눌러야 실제 저장 + 알림발송까지 한 번에 처리됩니다.</p>
+          <div class="row" style="margin-top:8px;max-width:420px;">
+            <input id="incentiveDate" type="date" />
+            <button class="btn-outline" onclick="loadIncentive()">조회</button>
+            <button class="btn-primary" onclick="sendIncentiveBatch()">작성완료 (저장+알림발송)</button>
+          </div>
+          <div class="table-wrap" style="margin-top:10px;">
+            <table>
+              <thead><tr><th>출장자</th><th>주소</th><th>내용</th><th>부가세제외금액(F)</th><th>원가(L)</th><th>마진(M)</th><th>인센율(P)</th><th>부제원가(Q)</th><th>인센티브(R)</th><th></th></tr></thead>
+              <tbody id="incentiveTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+          <strong>월별 정산 (인센티브 합계 − 과태료 = 최종지급액)</strong>
+          <p class="muted" style="margin-top:4px;">그 달 확정된 인센티브 합계에서 차량 과태료 합계를 뺀 최종지급액을 직원별로 계산합니다. "정산 확정 및 알림발송"을 누르면 결과가 저장되고 직원에게 안내 메일이 갑니다(같은 달을 다시 확정하면 이전 내용을 덮어씁니다).</p>
+          <div class="row" style="margin-top:8px;max-width:420px;">
+            <input id="settleMonth" type="month" />
+            <button class="btn-outline" onclick="loadMonthlySettlement()">조회</button>
+          </div>
+          <div class="table-wrap" style="margin-top:10px;">
+            <table>
+              <thead><tr><th>직원</th><th>인센티브 합계</th><th>과태료</th><th>최종지급액</th><th>상태</th></tr></thead>
+              <tbody id="settleTableBody"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:10px;">
+            <button class="btn-primary" onclick="confirmMonthlySettlementBtn()">정산 확정 및 알림발송</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="adminTab-stats" class="hidden">
+        <div class="card">
+          <div class="row" style="align-items:center;flex-wrap:wrap;">
+            <strong style="flex:1;">📊 월별 매출·마진 추이</strong>
+            <select id="statsRangeSel" style="flex:0 0 140px;" onchange="renderStatsAll_()">
+              <option value="6">최근 6개월</option>
+              <option value="12" selected>최근 12개월</option>
+              <option value="24">최근 24개월</option>
+              <option value="0">전체 기간</option>
+            </select>
+          </div>
+          <div id="statsTrend" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+          <div class="row" style="align-items:center;flex-wrap:wrap;">
+            <strong style="flex:1;">기간 평균 정산 요약</strong>
+            <select id="statsAvgPeriodSel" style="flex:0 0 160px;" onchange="onStatsAvgPeriodChange_()">
+              <option value="thisMonth" selected>이번달</option>
+              <option value="last6">최근 6개월 평균</option>
+              <option value="last12">최근 12개월 평균</option>
+              <option value="last24">최근 24개월 평균</option>
+              <option value="all">전체 기간 평균</option>
+              <option value="custom">직접 지정(날짜 범위)</option>
+            </select>
+          </div>
+          <div id="statsCustomRangeRow" class="row hidden" style="margin-top:8px;align-items:center;flex-wrap:wrap;gap:8px;">
+            <input type="date" id="statsCustomStart" style="flex:0 0 150px;" />
+            <span class="muted">~</span>
+            <input type="date" id="statsCustomEnd" style="flex:0 0 150px;" />
+            <button class="btn-primary" style="flex:0 0 80px;" onclick="applyStatsCustomRange_()">적용</button>
+            <span id="statsCustomRangeMsg" class="muted" style="flex:1;"></span>
+          </div>
+          <p class="muted" style="margin-top:4px;">매달 개별 수치보다 이 기간 전체의 평균적인 수준을 보기 위한 요약입니다. 장부 데이터에서 매번 자동 계산됩니다.</p>
+          <div id="statsAvgGrid" class="row" style="margin-top:10px;gap:10px;flex-wrap:wrap;"></div>
+          <div id="statsHqGrid" class="row hidden" style="margin-top:4px;gap:10px;flex-wrap:wrap;"></div>
+          <strong style="font-size:13px;display:block;margin-top:16px;">월별 정산표</strong>
+          <div class="table-wrap" style="max-height:480px;overflow-y:auto;margin-top:6px;">
+            <table style="table-layout:fixed;">
+              <thead>
+                <tr>
+                  <th style="width:70px;">월</th><th style="width:100px;">매출</th><th style="width:56px;">건수</th><th style="width:56px;">출장일</th>
+                  <th style="width:100px;">일평균매출</th><th style="width:100px;">이익</th><th style="width:64px;">이익%</th><th style="width:64px;">원가%</th>
+                  <th style="width:90px;">건당매출</th><th style="width:90px;">건당순이익</th><th style="width:100px;">출장일별순이익</th>
+                  <th style="width:64px;">계산서%</th><th style="width:64px;">입금%</th><th style="width:64px;">카드%</th><th style="width:64px;">현금%</th><th style="width:80px;">입금+현금%</th>
+                </tr>
+              </thead>
+              <tbody id="statsMonthlyBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+          <strong>이익 대비 인센티브 추이</strong>
+          <p class="muted" style="margin-top:4px;">전 직원 인센티브 합계가 이익 대비 늘고 있는지/줄고 있는지 확인용.</p>
+          <div id="statsIncentiveChart" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+          <div class="row" style="align-items:center;flex-wrap:wrap;">
+            <strong style="flex:1;">출장자별 실적 추이</strong>
+            <select id="statsAgentRangeSel" style="flex:0 0 140px;" onchange="renderStatsAgentCharts_()">
+              <option value="6">최근 6개월</option>
+              <option value="12" selected>최근 12개월</option>
+              <option value="24">최근 24개월</option>
+              <option value="0">전체 기간</option>
+            </select>
+          </div>
+          <div id="statsAgentCharts" style="margin-top:10px;"></div>
+          <div class="row" style="align-items:center;margin-top:16px;">
+            <strong style="flex:1;font-size:14px;">월별 상세</strong>
+            <select id="statsMonthSel" style="flex:0 0 140px;" onchange="renderStatsAgentSource_()"></select>
+          </div>
+          <div class="table-wrap" style="margin-top:6px;">
+            <table>
+              <thead><tr><th>출장자</th><th>매출</th><th>마진</th><th>건수</th><th>출장일</th><th>인센티브</th></tr></thead>
+              <tbody id="statsAgentBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+          <div class="row" style="align-items:center;flex-wrap:wrap;">
+            <strong style="flex:1;">출처별 실적 추이 (매출 상위 10개)</strong>
+            <select id="statsSourceRangeSel" style="flex:0 0 140px;" onchange="renderStatsSourceSection_()">
+              <option value="6">최근 6개월</option>
+              <option value="12" selected>최근 12개월</option>
+              <option value="24">최근 24개월</option>
+              <option value="0">전체 기간</option>
+            </select>
+          </div>
+          <div id="statsSourceCharts" style="margin-top:10px;"></div>
+          <div class="row" style="align-items:center;margin-top:16px;">
+            <strong style="flex:1;font-size:14px;">선택 기간 상세 (전체 출처)</strong>
+          </div>
+          <div class="table-wrap" style="margin-top:6px;">
+            <table>
+              <thead><tr><th>출처</th><th>매출</th><th>마진</th><th>건수</th><th>비중</th></tr></thead>
+              <tbody id="statsSourceBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="adminTab-search" class="hidden">
+        <div class="card">
+          <strong>장부 검색</strong>
+          <p class="muted" style="margin-top:4px;">전화번호·주소·내용의 일부를 입력하면 찾아줍니다. 띄어쓰기는 무시돼요 (역삼동 817 = 역삼동817).</p>
+          <div class="row search-flt" style="margin-top:8px;">
+            <input id="admSearchKw" placeholder="예: 1234 / 역삼동 817 / 도어락" onkeydown="if(event.key==='Enter')doAdmSearch()" />
+            <div class="msf"><button type="button" class="msf-btn" id="admAgentFilter_btn" onclick="msfToggle_('admAgentFilter')">전체 출장자</button><div class="msf-panel" id="admAgentFilter_panel"></div></div>
+            <div class="msf"><button type="button" class="msf-btn" id="admPayFilter_btn" onclick="msfToggle_('admPayFilter')">전체 입금형태</button><div class="msf-panel" id="admPayFilter_panel"></div></div>
+            <div class="msf"><button type="button" class="msf-btn" id="admSourceFilter_btn" onclick="msfToggle_('admSourceFilter')">전체 출처</button><div class="msf-panel" id="admSourceFilter_panel"></div></div>
+            <button class="btn-primary" onclick="doAdmSearch()">검색</button>
+          </div>
+          <div id="admSearchResult" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+          <strong>최근 7일 장부</strong>
+          <p class="muted" style="margin-top:4px;">더 이전 기록은 위 검색을 이용하세요. 아래 목록은 스크롤로 확인합니다.</p>
+          <p class="muted" id="tableSummary"></p>
+          <div class="table-wrap" style="max-height:480px;overflow-y:auto;">
+            <table style="table-layout:fixed;">
+              <thead>
+                <tr>
+                  <th style="width:76px;white-space:nowrap;">날짜</th><th style="width:36px;">요일</th><th style="width:200px;">주소</th><th style="width:200px;">내용</th><th style="width:92px;white-space:nowrap;">금액</th>
+                  <th style="width:70px;">출장자</th><th style="width:40px;white-space:nowrap;">형태</th><th style="width:50px;">출처</th><th style="width:90px;white-space:nowrap;">원가</th><th style="width:90px;white-space:nowrap;">마진</th><th style="width:60px;">등록자</th><th style="width:56px;"></th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div id="adminTab-docs" class="hidden">
+        <div class="card">
+          <strong>견적서·거래명세서 관리</strong>
+          <p class="muted" style="margin-top:4px;">지금까지 작성된 견적서·거래명세서를 검색해서 수정하거나 삭제할 수 있습니다. "오늘 작성한 문서"만 찾던 문서작성 팝업과 달리 전체 기간을 다룹니다.</p>
+          <div class="row search-flt" style="margin-top:8px;">
+            <input id="docsMgKw" placeholder="거래처명" onkeydown="if(event.key==='Enter')loadDocsManageTab()" />
+            <select id="docsMgKind">
+              <option value="">전체 종류</option>
+              <option value="estimate">견적서</option>
+              <option value="statement">거래명세서</option>
+            </select>
+            <input type="date" id="docsMgFrom" />
+            <input type="date" id="docsMgTo" />
+            <button class="btn-primary" onclick="loadDocsManageTab()">검색</button>
+          </div>
+          <div class="table-wrap" style="max-height:560px;overflow-y:auto;margin-top:12px;">
+            <table style="table-layout:fixed;">
+              <thead>
+                <tr>
+                  <th style="width:84px;">날짜</th><th style="width:64px;">종류</th><th style="width:130px;">거래처</th><th style="width:64px;">장부연결</th><th style="width:190px;"></th>
+                </tr>
+              </thead>
+              <tbody id="docsMgBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div id="adminTab-album" class="hidden">
+        <div class="card">
+          <strong>공유 앨범</strong>
+          <p class="muted" style="margin-top:4px;">사진·영상·자료를 종류별로 모아 함께 봅니다. 카테고리를 선택하세요.</p>
+          <div id="a_albumCats" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+          <div id="a_albumUploadWrap" class="hidden" style="margin-top:12px;padding:10px;border:1px dashed var(--border);border-radius:8px;background:#fafbfc;">
+            <strong id="a_albumCatTitle" style="font-size:14px;"></strong>
+            <div style="margin-top:6px;">
+              <input type="file" accept="image/*,video/*,application/pdf" multiple onchange="handleAlbumFiles(this)" />
+            </div>
+            <div id="a_albumStatus" class="muted" style="margin-top:6px;font-size:12px;"></div>
+            <div id="a_albumProgressWrap" class="upload-progress-wrap hidden">
+              <div class="upload-progress-track"><div id="a_albumProgressFill" class="upload-progress-fill"></div></div>
+              <div id="a_albumProgressPct" class="upload-progress-pct">0%</div>
+            </div>
+          </div>
+          <div id="a_albumGrid" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;"></div>
+          <button id="a_albumMoreBtn" class="btn-outline hidden" style="width:100%;margin-top:10px;" onclick="loadAlbumPage(false)">더 보기</button>
+        </div>
+      </div>
+
+      <div id="adminTab-blogreq" class="hidden">
+        <div class="card">
+          <div class="row" style="align-items:center;">
+            <strong style="flex:1;">✍️ 블로그 작성 요청</strong>
+            <label style="display:inline-flex;align-items:center;gap:5px;margin:0;font-size:12px;color:var(--text);cursor:pointer;white-space:nowrap;">
+              <input type="checkbox" id="blogReqOnlyPending" checked onchange="loadBlogRequests()"
+                     style="width:auto;height:auto;padding:0;border:none;background:none;border-radius:0;margin:0;flex:0 0 auto;">
+              완료된 건 숨기기
+            </label>
+            <!-- flex:0 0 auto가 없으면 전역 `.row > *{flex:1}`에 걸려 버튼이 가로로 길게 늘어난다 -->
+            <button class="btn-outline" style="padding:4px 10px;font-size:12px;margin-left:6px;flex:0 0 auto;" onclick="loadBlogRequests()">새로고침</button>
+          </div>
+          <p class="muted" style="margin-top:4px;">장부검색 → 행 오른쪽 <strong>✍️</strong> → <strong>"📥 나중에 쓰게 요청만 넣기"</strong>로 넣은 건이 <strong>대기</strong>로 여기 쌓입니다. 글은 Claude Code 세션에서 씁니다("블로그 써줘"). <strong>글을 다 쓰면 "완료"로 바꿔주세요</strong> — 안 그러면 다음에 뭘 써야 할지 헷갈립니다.<br>앱 안에서 🪄로 자동생성한 건은 <strong>완료(자동)</strong>로 자동으로 남습니다(따로 하실 일 없음).</p>
+          <!-- 체크박스·버튼은 flex:0 0 auto가 없으면 전역 `.row > *{flex:1}`에 걸려 가로로 늘어난다.
+               체크박스 자체도 전역 `input{width:100%}`에 걸리므로 아래처럼 되돌려줘야 한다. -->
+          <div id="blogReqBulkBar" class="row hidden" style="align-items:center;margin-top:10px;">
+            <label style="display:inline-flex;align-items:center;gap:5px;margin:0;font-size:12px;color:var(--text);cursor:pointer;white-space:nowrap;flex:0 0 auto;">
+              <input type="checkbox" id="blogReqSelectAll" onchange="toggleAllBlogReq(this.checked)"
+                     style="width:auto;height:auto;padding:0;border:none;background:none;border-radius:0;margin:0;flex:0 0 auto;">
+              전체 선택
+            </label>
+            <span id="blogReqSelCount" class="muted" style="flex:1;font-size:12px;"></span>
+            <button id="blogReqBulkDelBtn" class="btn-danger" style="flex:0 0 auto;padding:4px 12px;font-size:12px;"
+                    onclick="deleteSelectedBlogRequests(this)" disabled>선택 삭제</button>
+          </div>
+          <div id="blogReqList" style="margin-top:12px;"></div>
+        </div>
+      </div>
+
+      <div id="adminTab-changelog" class="hidden">
+        <div class="card">
+          <strong>업데이트 내역</strong>
+          <p class="muted" style="margin-top:4px;">앱이 그동안 어떻게 바뀌어왔는지 최신 순으로 보여줍니다.</p>
+        </div>
+        <div id="adminTab-changelog-body" style="margin-top:10px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="incentiveModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <button class="close-x" onclick="document.getElementById('incentiveModal').classList.add('hidden')">✕</button>
+      <h3>인센티브 입력</h3>
+      <input type="hidden" id="inc_rowIndex" />
+      <div id="inc_info" class="muted" style="margin-bottom:10px;"></div>
+      <label>인센티브율 (%)</label>
+      <input id="inc_rate" type="number" placeholder="예: 15" />
+      <label>부제원가 (부가세 제외 원가)</label>
+      <input id="inc_subCost" type="number" placeholder="재고단가 합이 기본값" />
+      <div id="inc_preview" class="muted" style="margin-top:8px;"></div>
+      <div style="margin-top:16px;">
+        <button class="btn-primary" style="width:100%" onclick="saveIncentive()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="incentiveNotifyModal" class="modal-backdrop hidden" data-close-fn="closeIncentiveNotify">
+    <div class="modal">
+      <h3>🎉 인센티브 지급 안내</h3>
+      <div id="incentiveNotifyTotal" class="muted" style="margin-bottom:10px;"></div>
+      <div id="incentiveNotifyBody" style="max-height:320px;overflow-y:auto;"></div>
+      <div style="margin-top:16px;">
+        <button class="btn-primary" style="width:100%" onclick="closeIncentiveNotify()">확인했습니다</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 알림 이메일 받기 — 관리자(사장님) 외에는 주소가 없으면 로그인할 때마다 뜬다(Script1의 maybeAskNotifyEmail_).
+       인센티브·업데이트 안내 팝업과 겹칠 수 있어 z-index를 그것들보다 위로 둔다. -->
+  <div id="notifyEmailModal" class="modal-backdrop hidden" style="z-index:150;">
+    <div class="modal" style="max-width:380px;">
+      <h3>📧 알림 받을 이메일</h3>
+      <p class="muted" style="font-size:13px;line-height:1.7;margin-bottom:12px;">
+        인센티브 확정, 월정산 같은 알림을 이메일로 보내드립니다.<br>
+        폰에서 쓰시는 <strong>지메일 주소</strong>를 적어주세요. 한 번만 입력하면 됩니다.
+      </p>
+      <input id="notifyEmailInput" type="email" inputmode="email" autocomplete="email" placeholder="example@gmail.com"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();saveMyNotifyEmailFromModal();}" />
+      <div id="notifyEmailMsg" class="muted" style="font-size:12px;margin-top:6px;min-height:16px;"></div>
+      <div style="margin-top:14px;">
+        <button id="notifyEmailSaveBtn" class="btn-primary" style="width:100%" onclick="saveMyNotifyEmailFromModal()">저장</button>
+        <button class="btn-outline" style="width:100%;margin-top:8px;" onclick="closeNotifyEmailModal()">나중에 입력</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="mediaUploadOverlay" class="modal-backdrop hidden" style="z-index:200;">
+    <div class="modal" style="max-width:340px;text-align:center;">
+      <div style="font-size:28px;">📤</div>
+      <div style="font-weight:700;margin:6px 0 10px;">업로드 중입니다</div>
+      <div id="mediaUploadOverlayText" class="muted" style="font-size:13px;margin-bottom:4px;word-break:break-all;"></div>
+      <div class="upload-progress-wrap">
+        <div class="upload-progress-track"><div id="mediaUploadOverlayFill" class="upload-progress-fill"></div></div>
+        <div id="mediaUploadOverlayPct" class="upload-progress-pct">0%</div>
+      </div>
+      <p class="muted" style="font-size:11px;margin-top:12px;">업로드가 끝날 때까지 이 화면을 벗어나지 마세요</p>
+    </div>
+  </div>
+
+  <div id="whatsNewModal" class="modal-backdrop hidden" data-close-fn="closeWhatsNewModal">
+    <div class="modal">
+      <h3>🔔 업데이트 안내 <span id="whatsNewVersion" style="color:#22c55e;font-size:14px;"></span></h3>
+      <div id="whatsNewBody" class="muted" style="margin-top:10px;line-height:1.6;max-height:360px;overflow-y:auto;"></div>
+      <div style="margin-top:16px;">
+        <button class="btn-primary" style="width:100%" onclick="closeWhatsNewModal()">확인했습니다</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="bizRegModal" class="modal-backdrop hidden">
+    <div class="modal" style="max-width:600px;">
+      <button class="close-x" onclick="document.getElementById('bizRegModal').classList.add('hidden')">✕</button>
+      <h3>사업자등록증 정보</h3>
+      <input type="hidden" id="bizreg_rowIndex" />
+
+      <div id="bizregLedgerInfo" class="hidden" style="margin-bottom:12px;padding:10px;border:1px dashed var(--border);border-radius:8px;background:#fafbfc;">
+        <div class="muted" style="font-size:12px;margin-bottom:6px;" id="bizregLedgerMeta"></div>
+        <div class="row" style="align-items:center;margin-top:4px;">
+          <input id="bizreg_ledgerAddress" readonly style="flex:3;background:#fff;" />
+          <button class="btn-outline" style="flex:0 0 auto;padding:8px 10px;" onclick="copyFieldById_('bizreg_ledgerAddress')">복사</button>
+        </div>
+        <div class="row" style="align-items:center;margin-top:6px;">
+          <input id="bizreg_ledgerContent" readonly style="flex:3;background:#fff;" />
+          <button class="btn-outline" style="flex:0 0 auto;padding:8px 10px;" onclick="copyFieldById_('bizreg_ledgerContent')">복사</button>
+        </div>
+        <div class="row" style="align-items:center;margin-top:6px;">
+          <input id="bizreg_ledgerAmount" readonly style="flex:3;background:#fff;" />
+          <button class="btn-outline" style="flex:0 0 auto;padding:8px 10px;" onclick="copyFieldById_('bizreg_ledgerAmount')">복사</button>
+        </div>
+        <div class="row" style="align-items:center;margin-top:6px;">
+          <input id="bizreg_ledgerRemark" readonly style="flex:3;background:#fff;" />
+          <button class="btn-outline" style="flex:0 0 auto;padding:8px 10px;" onclick="copyFieldById_('bizreg_ledgerRemark')">복사</button>
+        </div>
+      </div>
+
+      <div id="bizregUploadView">
+        <p class="muted" style="margin-top:0;">아직 등록된 사업자등록증이 없습니다. 사진이나 PDF를 올리면 자동으로 글자를 읽어드려요.</p>
+        <input id="bizreg_fileInput" type="file" accept="image/*,application/pdf" onchange="handleBizRegFile(this)" />
+        <div id="bizregUploadStatus" class="muted" style="margin-top:8px;"></div>
+      </div>
+
+      <div id="bizregFormView" class="hidden">
+        <div id="bizregPreviewWrap" style="margin-bottom:10px;"></div>
+        <p class="muted" id="bizregFormStatus" style="margin-top:0;"></p>
+        <label>등록번호</label>
+        <div class="row" style="align-items:center;">
+          <input id="bizreg_bizNo" style="flex:3;" />
+          <button class="btn-outline" style="flex:0 0 auto;padding:8px 10px;" onclick="copyFieldById_('bizreg_bizNo')">복사</button>
+        </div>
+        <label>상호</label>
+        <div class="row" style="align-items:center;">
+          <input id="bizreg_name" style="flex:3;" />
+          <button class="btn-outline" style="flex:0 0 auto;padding:8px 10px;" onclick="copyFieldById_('bizreg_name')">복사</button>
+        </div>
+        <label>성명</label>
+        <div class="row" style="align-items:center;">
+          <input id="bizreg_ceo" style="flex:3;" />
+          <button class="btn-outline" style="flex:0 0 auto;padding:8px 10px;" onclick="copyFieldById_('bizreg_ceo')">복사</button>
+        </div>
+        <label>사업장소재지</label>
+        <div class="row" style="align-items:center;">
+          <input id="bizreg_address" style="flex:3;" />
+          <button class="btn-outline" style="flex:0 0 auto;padding:8px 10px;" onclick="copyFieldById_('bizreg_address')">복사</button>
+        </div>
+        <label>이메일</label>
+        <div class="row" style="align-items:center;">
+          <input id="bizreg_email" type="email" placeholder="세금계산서 받을 이메일" style="flex:3;" />
+          <button class="btn-outline" style="flex:0 0 auto;padding:8px 10px;" onclick="copyFieldById_('bizreg_email')">복사</button>
+        </div>
+        <div class="row" style="align-items:center;margin-top:4px;">
+          <button class="btn-outline" style="flex:1;padding:6px 8px;font-size:12px;" onclick="copyEmailPart_('local')">@ 앞부분 복사</button>
+          <button class="btn-outline" style="flex:1;padding:6px 8px;font-size:12px;" onclick="copyEmailPart_('domain')">@ 뒷부분 복사</button>
+        </div>
+        <div class="row">
+          <div style="flex:1;">
+            <label>업태</label>
+            <div class="row" style="align-items:center;">
+              <input id="bizreg_bizType" style="flex:3;" />
+              <button class="btn-outline" style="flex:0 0 auto;padding:8px 10px;" onclick="copyFieldById_('bizreg_bizType')">복사</button>
+            </div>
+          </div>
+          <div style="flex:1;">
+            <label>종목</label>
+            <div class="row" style="align-items:center;">
+              <input id="bizreg_bizItem" style="flex:3;" />
+              <button class="btn-outline" style="flex:0 0 auto;padding:8px 10px;" onclick="copyFieldById_('bizreg_bizItem')">복사</button>
+            </div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:14px;">
+          <button class="btn-primary" style="flex:1;" onclick="saveBizRegReview()">저장</button>
+          <button class="btn-outline" style="flex:1;" onclick="copyBizRegText()">전체 복사하기</button>
+        </div>
+        <button class="btn-outline" style="width:100%;margin-top:8px;" onclick="showBizRegUploadAgain()">사진/PDF 다시 올리기</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="integratedReviewModal" class="modal-backdrop hidden">
+    <div class="modal" style="max-width:560px;">
+      <button class="close-x" onclick="document.getElementById('integratedReviewModal').classList.add('hidden')">✕</button>
+      <h3>통합장부 검토</h3>
+      <div class="row" style="margin:8px 0;">
+        <input id="intReviewDate" type="date" style="flex:1;" onchange="loadIntegratedReview_(this.value)" />
+      </div>
+      <div id="intReviewSummary" class="muted" style="margin:6px 0 12px;"></div>
+      <div id="intReviewIssues" style="max-height:340px;overflow-y:auto;"></div>
+      <div class="row" style="margin-top:16px;">
+        <button class="btn-outline" style="flex:1;" onclick="document.getElementById('integratedReviewModal').classList.add('hidden')">수정하기</button>
+        <button class="btn-primary" style="flex:1;" onclick="finishIntegratedLedger_()">완료</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="blogRequestModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <button class="close-x" onclick="document.getElementById('blogRequestModal').classList.add('hidden')">✕</button>
+      <h3>✍️ 블로그</h3>
+      <div id="blogReq_info" class="muted" style="margin-bottom:10px;"></div>
+      <label>주요 키워드</label>
+      <input id="blogReq_keywords" placeholder="예: 광진구 자동문 수리, 상가 자동문" />
+      <label>제목에 인용할 문구 (선택)</label>
+      <input id="blogReq_titlePhrase" placeholder="고객 후기 문구 등, 없으면 비워두세요" />
+      <button class="btn-primary" style="width:100%;margin-top:10px;" onclick="submitBlogRequestOnly(this)">📥 나중에 쓰게 요청만 넣기</button>
+      <p class="muted" style="margin-top:6px;font-size:12px;">"✍️ 블로그 요청" 탭에 <strong>대기</strong>로 쌓입니다. 키워드는 비워둬도 됩니다.<br>나중에 Claude Code 세션에서 "블로그 써줘" 하면 이 목록을 보고 씁니다(지침·과거 글·현장 사진까지 보고 쓰므로 아래 자동생성보다 낫습니다).</p>
+      <div id="blogReqOnly_result" style="margin-top:8px;"></div>
+      <hr style="margin:14px 0;border:none;border-top:1px solid var(--border);" />
+      <button class="btn-primary" style="width:100%;background:#8b5cf6;" onclick="openTextProviderPicker()">🪄 지금 바로 발행 (글+썸네일 자동생성)</button>
+      <p class="muted" style="margin-top:6px;font-size:12px;">앱 안에서 AI가 한 번에 만들어 구글 문서로 저장합니다. <strong>주요 키워드가 필요</strong>하고 1~2분 걸립니다. 창을 닫지 말고 기다려주세요.</p>
+      <div id="blogAuto_result" style="margin-top:8px;"></div>
+      <hr style="margin:14px 0;border:none;border-top:1px solid var(--border);" />
+      <button class="btn-outline" style="width:100%;" onclick="generateThumbCandidates()">🖼️ 썸네일 후보 4개 만들기 (가로2+세로2)</button>
+      <p class="muted" style="margin-top:6px;font-size:12px;">본문 없이 썸네일만 여러 개 뽑아서 미리 골라볼 때 사용하세요. 1분 정도 걸립니다.</p>
+      <div id="thumbCandidates_result" style="margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <div id="textProviderModal" class="modal-backdrop hidden">
+    <div class="modal" style="max-width:340px;">
+      <button class="close-x" onclick="document.getElementById('textProviderModal').classList.add('hidden')">✕</button>
+      <h3>어떤 AI로 본문을 쓸까요?</h3>
+      <div style="margin-top:12px;">
+        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;">
+          <input type="radio" name="textProvider" value="openai" checked /> OpenAI (gpt-4o) — 유료지만 안정적으로 동작
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;margin-top:8px;">
+          <input type="radio" name="textProvider" value="gemini" /> Gemini — 무료지만 현재 이 계정 할당량 초과로 막혀있음(나중에 풀리면 시도)
+        </label>
+      </div>
+      <button class="btn-primary" style="width:100%;margin-top:14px;background:#8b5cf6;" onclick="confirmTextProviderAndGenerate()">이걸로 발행</button>
+    </div>
+  </div>
+
+  <div id="unpaidNoteModal" class="modal-backdrop hidden">
+    <div class="modal" style="max-width:340px;">
+      <button class="close-x" onclick="closeUnpaidNoteModal_()">✕</button>
+      <h3>입금 확인 처리</h3>
+      <div id="un_info" class="muted" style="margin-bottom:10px;"></div>
+      <label>입금자명 등 메모 (선택)</label>
+      <input id="un_note" placeholder="예: 홍길동 입금" />
+      <button class="btn-primary" style="width:100%;margin-top:10px;" onclick="submitUnpaidDone_()">완료 처리</button>
+    </div>
+  </div>
+
+  <div id="photoDownloadModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <button class="close-x" onclick="closePhotoDownloadModal_()">✕</button>
+      <h3>📥 사진 다운로드 준비</h3>
+      <div id="pdl_info" class="muted" style="margin-bottom:10px;"></div>
+      <div id="pdl_form">
+        <label>주요 키워드 (파일명 앞에 붙습니다)</label>
+        <input id="pdl_keyword" placeholder="예: 광진구도어락" />
+        <button class="btn-primary" style="width:100%;margin-top:10px;" onclick="submitPhotoDownloadRequest()">다운로드 링크 만들기</button>
+      </div>
+      <div id="pdl_result" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <div id="encourageModal" class="modal-backdrop hidden">
+    <div class="modal" style="text-align:center;">
+      <button class="close-x" onclick="document.getElementById('encourageModal').classList.add('hidden')">✕</button>
+      <div style="font-size:38px;margin-bottom:6px;">🎉</div>
+      <p id="encourageText" style="white-space:pre-line;line-height:1.6;font-size:15px;text-align:left;"></p>
+      <button class="btn-primary" style="width:100%;margin-top:16px;" onclick="document.getElementById('encourageModal').classList.add('hidden')">확인</button>
+    </div>
+  </div>
+
+  <div id="vehicleLogModal" class="modal-backdrop hidden" data-close-fn="closeVehicleLogModal_">
+    <div class="modal">
+      <button class="close-x" onclick="closeVehicleLogModal_()">✕</button>
+      <h3>차량 기록</h3>
+      <div id="vlog_fuelSection">
+        <p>오늘 주유하셨나요?</p>
+        <div class="row">
+          <button class="btn-outline" style="flex:1;" id="vlog_fuelYesBtn" onclick="vlogSetFuel_(true)">예</button>
+          <button class="btn-outline" style="flex:1;" id="vlog_fuelNoBtn" onclick="vlogSetFuel_(false)">아니요</button>
+        </div>
+        <div id="vlog_amountWrap" class="hidden" style="margin-top:10px;">
+          <label>주유 금액</label>
+          <input id="vlog_amount" type="number" placeholder="주유 금액" />
+        </div>
+      </div>
+      <div id="vlog_kmSection" class="hidden" style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+        <label>이번달 마지막 근무일입니다 — 오늘까지의 총 주행거리(누적 킬로수)</label>
+        <input id="vlog_km" type="number" placeholder="예: 45230" />
+      </div>
+      <button class="btn-primary" style="width:100%;margin-top:16px;" onclick="submitVehicleLog_()">확인</button>
+    </div>
+  </div>
+
+  <div id="mediaModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <button class="close-x" onclick="document.getElementById('mediaModal').classList.add('hidden')">✕</button>
+      <h3>현장 사진/영상</h3>
+      <input type="hidden" id="media_rowIndex" />
+      <div class="dropzone" ondragover="onDropzoneOver(event)" ondragleave="onDropzoneLeave(event)" ondrop="onDropzoneDrop(event,'media_fileInput')">
+        <input id="media_fileInput" type="file" accept="image/*,video/*" multiple onchange="handleMediaFiles(this)" />
+        <p class="dropzone-hint">클릭해서 선택하거나, 파일을 여기로 끌어다 놓으세요 (여러 장 가능)</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+        <button class="btn-outline" style="padding:6px 12px;font-size:12px;" onclick="openFieldMediaFolder(Number(document.getElementById('media_rowIndex').value))">📁 드라이브에서 직접 올리기</button>
+        <button class="btn-outline" style="padding:6px 12px;font-size:12px;" onclick="loadMediaList(Number(document.getElementById('media_rowIndex').value))">🔄 새로고침</button>
+      </div>
+      <p class="muted" style="margin:6px 0 0;font-size:11px;">대용량 영상이나 여러 개를 한꺼번에 올릴 땐 드라이브 쪽이 더 빠릅니다(백그라운드로 둬도 계속 올라감). 다 올리고 이 화면으로 돌아오면 자동으로 목록에 붙습니다.</p>
+      <div id="mediaUploadStatus" class="muted" style="margin-top:8px;"></div>
+      <div class="upload-progress-wrap">
+        <div class="upload-progress-track"><div id="mediaModalProgressFill" class="upload-progress-fill"></div></div>
+        <div id="mediaModalProgressPct" class="upload-progress-pct">0%</div>
+      </div>
+      <div id="mediaList" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <div id="docModal" class="modal-backdrop hidden">
+    <div class="modal" style="max-width:640px;">
+      <button class="close-x" onclick="document.getElementById('docModal').classList.add('hidden')">✕</button>
+      <h3 id="docModalTitle">견적서 작성</h3>
+
+      <div id="docTodayListWrap" style="margin-bottom:10px;padding:10px;border:1px dashed var(--border);border-radius:8px;background:#fafbfc;">
+        <strong style="font-size:13px;">오늘 작성한 문서 불러와서 수정</strong>
+        <div id="docTodayList" style="margin-top:6px;font-size:13px;"></div>
+      </div>
+
+      <div id="docEditingBanner" class="hidden" style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:#eef6ff;color:#1d4ed8;font-size:13px;">
+        ✏️ 수정 중: <span id="docEditingName"></span>
+        <button class="btn-outline" style="float:right;padding:2px 8px;font-size:12px;" onclick="cancelDocEdit()">새로 작성</button>
+      </div>
+
+      <div class="row">
+        <div style="flex:2;"><label>거래처명</label><input id="doc_client" placeholder="예: 삼성전자" onblur="autofillDocEmail()" /></div>
+        <div style="flex:1;"><label>날짜</label><input id="doc_date" type="date" /></div>
+      </div>
+
+      <div style="margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:#fafbfc;">
+        <strong style="font-size:13px;">장부와 연결 (선택)</strong>
+        <p class="muted" style="margin:4px 0;font-size:12px;">연결해두면 전체장부/검색에서 이 문서로 바로 갈 수 있어요.</p>
+        <div id="docLinkPicked" class="hidden" style="font-size:13px;margin-bottom:6px;">
+          <span id="docLinkPickedText"></span>
+          <button class="btn-outline" style="padding:2px 8px;font-size:12px;" onclick="clearDocLink()">연결 해제</button>
+        </div>
+        <div id="docLinkSearchWrap" class="row">
+          <input id="doc_linkKw" placeholder="연결할 장부 검색 (주소/전화번호/내용)" style="flex:2;" onkeydown="if(event.key==='Enter'){event.preventDefault();doDocLinkSearch();}" />
+          <button class="btn-outline" style="flex:1;" onclick="doDocLinkSearch()">검색</button>
+        </div>
+        <div id="docLinkResult" style="margin-top:6px;"></div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <strong style="font-size:14px;">품목 목록</strong>
+        <div class="row" style="margin-top:6px;flex-wrap:wrap;">
+          <input id="doc_itemName" placeholder="품목명" style="flex:2;min-width:100px;" />
+          <input id="doc_itemSpec" placeholder="규격" style="flex:1;min-width:70px;" />
+          <input id="doc_itemQty" type="number" placeholder="수량" value="1" style="flex:1;min-width:60px;" />
+          <input id="doc_itemPrice" type="text" inputmode="numeric" placeholder="단가" oninput="onMoneyInput(this)" style="flex:1;min-width:80px;" />
+          <input id="doc_itemNote" placeholder="비고" style="flex:1;min-width:70px;" />
+          <button class="btn-outline" style="flex:1;" onclick="addDocItem()">추가</button>
+        </div>
+        <div id="docItemList" style="margin-top:8px;"></div>
+        <div id="docItemTotal" class="muted" style="margin-top:6px;text-align:right;"></div>
+      </div>
+      <div style="margin-top:16px;">
+        <button id="docSubmitBtn" class="btn-primary" style="width:100%" onclick="submitDoc()">PDF 생성</button>
+      </div>
+      <div id="docResult" style="margin-top:10px;"></div>
+
+      <div id="docEmailSection" style="margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fafbfc;">
+        <strong style="font-size:14px;">이메일로 보내기</strong>
+        <p class="muted" style="margin-top:4px;font-size:12px;">먼저 위에서 PDF를 생성한 뒤 보낼 수 있어요.</p>
+        <div class="row" style="margin-top:8px;">
+          <input id="doc_emailTo" type="email" placeholder="받는사람 이메일 주소" list="docEmailList" style="flex:2;" />
+          <datalist id="docEmailList"></datalist>
+          <button class="btn-primary" style="flex:1;" onclick="sendDocEmail()">이메일 보내기</button>
+        </div>
+        <div class="row" style="margin-top:8px;font-size:13px;">
+          <label style="display:flex;align-items:center;gap:4px;margin:0;"><input id="doc_attachBankBook" type="checkbox" disabled />통장사본 첨부</label>
+          <label style="display:flex;align-items:center;gap:4px;margin:0;"><input id="doc_attachBizReg" type="checkbox" disabled />사업자등록증 첨부</label>
+        </div>
+        <div id="docEmailResult" style="margin-top:8px;"></div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+          <label style="margin:0;font-size:12px;">명함 사진 (최초 1회만 등록하면 앞으로 모든 이메일 본문 아래에 자동으로 붙어요)</label>
+          <input id="doc_bizCardFile" type="file" accept="image/*" onchange="handleBizCardUpload(this)" style="margin-top:4px;" />
+          <div id="bizCardStatus" class="muted" style="margin-top:4px;font-size:12px;"></div>
+        </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+          <label style="margin:0;font-size:12px;">통장사본 (지점별 1회 등록 — 위 체크박스로 첨부 여부 선택)</label>
+          <input id="doc_bankBookFile" type="file" accept="image/*,.pdf" onchange="handleBankBookUpload(this)" style="margin-top:4px;" />
+          <div id="bankBookStatus" class="muted" style="margin-top:4px;font-size:12px;"></div>
+        </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+          <label style="margin:0;font-size:12px;">사업자등록증 (지점별 1회 등록 — 위 체크박스로 첨부 여부 선택)</label>
+          <input id="doc_companyBizRegFile" type="file" accept="image/*,.pdf" onchange="handleCompanyBizRegUpload(this)" style="margin-top:4px;" />
+          <div id="companyBizRegStatus" class="muted" style="margin-top:4px;font-size:12px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="locChooseModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <h3>사용 위치 선택</h3>
+      <div id="locChooseBody"></div>
+      <button class="btn-outline" style="width:100%;margin-top:8px;" onclick="document.getElementById('locChooseModal').classList.add('hidden')">취소</button>
+    </div>
+  </div>
+
+  <div id="priceHistoryModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <h3 id="priceHistoryTitle">가격 이력</h3>
+      <div id="priceHistoryBody" style="max-height:50vh;overflow-y:auto;"></div>
+      <button class="btn-outline" style="width:100%;margin-top:8px;" onclick="document.getElementById('priceHistoryModal').classList.add('hidden')">닫기</button>
+    </div>
+  </div>
+
+  <div id="priceModal" class="modal-backdrop hidden" data-close-fn="skipPriceModal">
+    <div class="modal">
+      <h3>자재단가에 추가</h3>
+      <p class="muted" style="margin-top:0;">재고에 없던 자재입니다. 자재단가 시트에 추가할 항목을 선택하고 매입처·공급가 등을 입력하세요. 공급가는 부가세 제외 금액이며, 세액·금액은 거기에 10%를 얹어 자동 계산됩니다.</p>
+      <div id="priceModalBody"></div>
+      <div class="row" style="margin-top:16px;">
+        <button class="btn-primary" onclick="confirmPriceModal()">선택 항목 추가</button>
+        <button class="btn-outline" onclick="skipPriceModal()">추가 안 함</button>
+      </div>
+    </div>
+  </div>
+
+
+
+<script>
+  // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
+  window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
+</script>
+<script src="script1.js?v=V53.31"></script>
+<script src="script2.js?v=V53.31"></script>
+<script src="script3.js?v=V53.31"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
