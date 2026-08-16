@@ -393,7 +393,7 @@
 
   function showAdminTab(tab) {
     scrollTabIntoView_(document.getElementById('tabBtn-' + tab));
-    ['dash','input','cal','users','stock','doorlock','vehicle','incentive','stats','search','album','docs','blogreq','changelog'].forEach(t => {
+    ['dash','input','cal','users','stock','doorlock','vehicle','incentive','stats','search','album','docs','expense','blogreq','changelog'].forEach(t => {
       const panel = document.getElementById('adminTab-' + t);
       const btn = document.getElementById('tabBtn-' + t);
       if (panel) panel.classList.toggle('hidden', t !== tab);
@@ -416,6 +416,7 @@
     if (tab === 'users') { loadNotifyUsers_(); loadNaverLinkStatus(); loadGeminiKeyStatus(); loadOpenAiKeyStatus(); }
     if (tab === 'vehicle') loadVehicleTab();
     if (tab === 'docs') loadDocsManageTab();
+    if (tab === 'expense') loadExpenseTab();
     if (tab === 'blogreq') loadBlogRequests();
     if (tab === 'changelog') renderChangelogTab();
     if (tab === 'cal') {

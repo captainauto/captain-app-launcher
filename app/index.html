@@ -588,6 +588,7 @@
         <button class="tab-btn" id="tabBtn-stock" onclick="showAdminTab('stock')">재고·단가 관리</button>
         <button class="tab-btn" id="tabBtn-doorlock" onclick="showAdminTab('doorlock')">도어락 가격표</button>
         <button class="tab-btn" id="tabBtn-vehicle" onclick="showAdminTab('vehicle')">차량관리</button>
+        <button class="tab-btn" id="tabBtn-expense" onclick="showAdminTab('expense')">💸 지출관리</button>
         <button class="tab-btn" id="tabBtn-blogreq" onclick="showAdminTab('blogreq')">✍️ 블로그 요청</button>
         <button class="tab-btn" id="tabBtn-users" onclick="showAdminTab('users')">사용자 관리</button>
         <button class="tab-btn tab-btn-stats" id="tabBtn-stats" onclick="showAdminTab('stats')">📊 통계</button>
@@ -1052,6 +1053,65 @@
             <table>
               <thead><tr><th>날짜</th><th>차량</th><th>담당자</th><th>금액</th><th>사유</th><th></th></tr></thead>
               <tbody id="fineBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="adminTab-expense" class="hidden">
+        <div class="card">
+          <strong>지출 등록</strong>
+          <p class="muted" style="margin-top:4px;">
+            월세·통신비·현금구매처럼 <strong>장부에 안 잡히는 지출</strong>을 여기 기록합니다.
+            주유는 <strong>차량관리 탭</strong>에서 넣어주세요(여기서 또 넣으면 이중계산됩니다).
+          </p>
+          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+            <input id="ex_date" type="date" style="flex:1;min-width:130px;" />
+            <select id="ex_major" style="flex:1;min-width:110px;"></select>
+            <input id="ex_item" type="text" placeholder="항목 (예: 월세)" style="flex:1.4;min-width:140px;" />
+            <input id="ex_amount" type="number" placeholder="금액" style="flex:1;min-width:110px;" />
+          </div>
+          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+            <select id="ex_payMethod" style="flex:1;min-width:100px;"></select>
+            <select id="ex_nature" style="flex:1.2;min-width:130px;"></select>
+            <input id="ex_workPct" type="number" placeholder="업무비율%" value="100" style="flex:1;min-width:110px;" />
+            <select id="ex_spread" style="flex:1;min-width:110px;">
+              <option value="당월">당월 전액</option>
+              <option value="월할12">12개월 나눠서</option>
+              <option value="월할24">24개월 나눠서</option>
+            </select>
+          </div>
+          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+            <input id="ex_accrualMonth" type="month" style="flex:1;min-width:130px;" title="비우면 지출일의 달로 잡힙니다" />
+            <input id="ex_memo" type="text" placeholder="메모 (선택)" style="flex:2;min-width:160px;" />
+            <!-- flex:0 0 auto가 없으면 전역 `.row > *{flex:1}`에 걸려 버튼이 가로로 늘어난다 -->
+            <button class="btn-primary" style="flex:0 0 auto;" onclick="submitExpense()">등록</button>
+            <button class="btn-outline" style="flex:0 0 auto;" onclick="resetExpenseForm()">초기화</button>
+          </div>
+          <p class="muted" style="margin-top:8px;font-size:12px;">
+            <strong>성격</strong>이 <strong>판관비</strong>인 것만 손익에서 빠집니다.
+            카드로 산 자재처럼 <strong>이미 장부 원가에 들어간 지출</strong>은 <strong>매출원가성</strong>으로 골라주세요 — 안 그러면 두 번 빠집니다.<br>
+            <strong>귀속월</strong>은 비워두면 지출일의 달로 잡힙니다. 12월에 결제한 1월 월세처럼 달이 다를 때만 지정하세요.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="row" style="align-items:center;flex-wrap:wrap;">
+            <strong style="flex:1;min-width:120px;">지출 내역</strong>
+            <input id="ex_filterMonth" type="month" style="flex:0 0 150px;" onchange="loadExpenses()" />
+            <select id="ex_filterMajor" style="flex:0 0 130px;" onchange="loadExpenses()"></select>
+            <button class="btn-outline" style="flex:0 0 auto;padding:4px 12px;font-size:12px;white-space:nowrap;" onclick="loadExpenses()">🔄 새로고침</button>
+          </div>
+          <div id="expenseSummary" class="muted" style="margin-top:8px;"></div>
+          <div class="table-wrap" style="margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>지출일</th><th>귀속월</th><th>대분류</th><th>항목</th>
+                  <th>금액</th><th>지급</th><th>성격</th><th>업무%</th><th>배분</th><th>메모</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="expenseBody"></tbody>
             </table>
           </div>
         </div>
@@ -1871,9 +1931,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V53.31"></script>
-<script src="script2.js?v=V53.31"></script>
-<script src="script3.js?v=V53.31"></script>
+<script src="script1.js?v=V53.32"></script>
+<script src="script2.js?v=V53.32"></script>
+<script src="script3.js?v=V53.32"></script>
 </body>
 </html>
 
