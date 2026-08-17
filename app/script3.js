@@ -348,6 +348,7 @@
           initExpenseDefaults_();
           loadExpenses();
           loadExpenseTemplates();
+          loadImportFolders();
         })
         .withFailureHandler(function (e) { toast('지출 설정 불러오기 실패: ' + e.message); })
         .getExpenseOptions();
@@ -390,6 +391,126 @@
     if (monthEl && !monthEl.value) monthEl.value = ymd.slice(0, 7);
     const tplMonthEl = document.getElementById('ex_tplRunMonth');
     if (tplMonthEl && !tplMonthEl.value) tplMonthEl.value = ymd.slice(0, 7);
+  }
+
+  // ---------- 카드·통장 자동 수집 (5단계) ----------
+  let impScan_ = null;
+
+  function loadImportFolders() {
+    const el = document.getElementById('impFolders');
+    if (!el) return;
+    el.innerHTML = '<span class="muted">폴더 확인 중...</span>';
+    RUN()
+      .withSuccessHandler(function (f) {
+        el.innerHTML = ['card', 'bank'].map(function (k) {
+          const v = f[k]; if (!v) return '';
+          return '<div style="display:inline-block;margin-right:14px;">' +
+            '<a href="' + v.url + '" target="_blank">📁 ' + v.name + '</a> ' +
+            '<span class="' + (v.waiting ? '' : 'muted') + '">' +
+            (v.waiting ? '<strong>파일 ' + v.waiting + '개 대기</strong>' : '비어 있음') + '</span></div>';
+        }).join('');
+      })
+      .withFailureHandler(function (e) { el.innerHTML = '<span class="muted">확인 실패: ' + e.message + '</span>'; })
+      .getImportFolders();
+  }
+
+  function scanImport() {
+    const el = document.getElementById('impResult');
+    if (!el) return;
+    el.innerHTML = '<span class="muted">파일 읽는 중... (파일이 크면 1분쯤 걸립니다)</span>';
+    RUN()
+      .withSuccessHandler(function (res) { impScan_ = res; renderImportScan_(); })
+      .withFailureHandler(function (e) { el.innerHTML = '<span class="muted">읽기 실패: ' + e.message + '</span>'; })
+      .scanImportFolders();
+  }
+
+  function renderImportScan_() {
+    const el = document.getElementById('impResult');
+    const r = impScan_;
+    if (!el || !r) return;
+
+    if (!r.files.length && !r.errors.length) {
+      el.innerHTML = '<span class="muted">폴더에 읽을 파일이 없습니다. 드라이브 폴더에 파일을 넣고 다시 눌러주세요.</span>';
+      return;
+    }
+
+    let html = '<div style="font-size:13px;">읽은 파일 <strong>' + r.files.length + '개</strong> · 거래 ' +
+      r.total + '건 중 <strong>' + r.classified + '건</strong> 분류됨</div>';
+
+    if (r.errors.length) {
+      html += '<div style="margin-top:6px;font-size:12px;color:#b45309;background:#fffbeb;padding:8px;border-radius:6px;">' +
+        r.errors.map(function (e) { return '⚠️ ' + e.file + ' — ' + e.message; }).join('<br>') + '</div>';
+    }
+
+    if (r.groups.length) {
+      html += '<div class="table-wrap" style="margin-top:10px;"><table>' +
+        '<thead><tr><th>귀속월</th><th>대분류</th><th>항목</th><th>금액</th><th>건수</th><th>성격</th><th>업무%</th></tr></thead><tbody>' +
+        r.groups.map(function (g) {
+          return '<tr' + (g.nature !== '판관비' ? ' style="opacity:.55;"' : '') + '><td>' + g.ym + '</td><td>' + g.major + '</td><td>' + g.item + '</td>' +
+            '<td style="text-align:right;">' + fmtMoney(g.amount) + '</td><td style="text-align:right;">' + g.count + '</td>' +
+            '<td>' + g.nature + '</td><td style="text-align:right;">' + g.workPct + '%</td></tr>';
+        }).join('') + '</tbody></table></div>' +
+        '<button class="btn-primary" style="margin-top:8px;" onclick="commitImportNow()">지출대장에 넣기 (' + r.groups.length + '줄)</button>';
+    }
+
+    if (r.unknown.length) {
+      html += '<div style="margin-top:14px;"><strong style="font-size:13px;">❓ 아직 분류 안 된 가맹점 ' + r.unknown.length + '곳</strong>' +
+        '<p class="muted" style="font-size:12px;margin:4px 0;">한 번만 지정하면 다음부터 자동으로 분류됩니다. ' +
+        '개인 지출이면 대분류를 <strong>제외</strong>로 두세요 — 손익에 안 들어갑니다.</p>' +
+        '<div class="table-wrap"><table><thead><tr><th>가맹점</th><th>금액</th><th>건</th><th>대분류</th><th>항목</th><th>성격</th><th>업무%</th><th></th></tr></thead><tbody>' +
+        r.unknown.map(function (u, i) {
+          return '<tr><td style="font-size:12px;">' + u.name + '</td>' +
+            '<td style="text-align:right;">' + fmtMoney(u.sum) + '</td><td style="text-align:right;">' + u.count + '</td>' +
+            '<td><select id="imp_major_' + i + '" style="min-width:90px;"><option value="">제외(개인)</option>' +
+              ['인건비','차량','매장','판관비','세금'].map(function (m) { return '<option value="' + m + '">' + m + '</option>'; }).join('') + '</select></td>' +
+            '<td><input id="imp_item_' + i + '" type="text" placeholder="항목" style="min-width:100px;" /></td>' +
+            '<td><select id="imp_nature_' + i + '" style="min-width:100px;"><option value="판관비">판관비</option><option value="매출원가성">매출원가성</option></select></td>' +
+            '<td><input id="imp_pct_' + i + '" type="number" value="100" style="width:64px;" /></td>' +
+            '<td><button class="btn-outline" style="padding:2px 8px;font-size:12px;" onclick="saveImpRule_(' + i + ')">규칙 저장</button></td></tr>';
+        }).join('') + '</tbody></table></div></div>';
+    }
+
+    el.innerHTML = html;
+  }
+
+  function saveImpRule_(i) {
+    const u = (impScan_ && impScan_.unknown[i]) || null;
+    if (!u) return;
+    const major = document.getElementById('imp_major_' + i).value;
+    const item = document.getElementById('imp_item_' + i).value.trim();
+    if (!major) { toast('개인 지출은 규칙 없이 두면 손익에 안 들어갑니다.'); return; }
+    if (!item) { toast('항목 이름을 넣어주세요.'); return; }
+    RUN()
+      .withSuccessHandler(function (res) {
+        if (res && res.success) { toast('규칙 저장 — 다시 "파일 읽기"를 누르면 반영됩니다.'); }
+        else { toast((res && res.message) || '저장 실패'); }
+      })
+      .withFailureHandler(function (e) { toast('저장 실패: ' + e.message); })
+      .saveImportRule(u.name, {
+        major: major, item: item,
+        nature: document.getElementById('imp_nature_' + i).value,
+        workPct: document.getElementById('imp_pct_' + i).value
+      });
+  }
+
+  function commitImportNow() {
+    const r = impScan_;
+    if (!r || !r.groups.length) return;
+    if (!confirm(r.groups.length + '줄을 지출대장에 넣고, 읽은 파일을 처리완료 폴더로 옮길까요?')) return;
+    const el = document.getElementById('impResult');
+    el.innerHTML = '<span class="muted">저장 중...</span>';
+    RUN()
+      .withSuccessHandler(function (res) {
+        if (!res || !res.success) { toast((res && res.message) || '실패'); renderImportScan_(); return; }
+        toast(res.added + '줄 저장 (이미 있던 ' + res.skipped + '줄 건너뜀), 파일 ' + res.moved + '개 정리');
+        impScan_ = null;
+        el.innerHTML = '<div style="padding:10px;background:#f0fdf4;border-radius:8px;">✅ ' +
+          res.added + '줄을 넣었습니다. 손익에 반영되는 금액 ' + fmtMoney(res.deduct) + '</div>';
+        loadImportFolders();
+        loadExpenses();
+      })
+      .withFailureHandler(function (e) { el.innerHTML = '<span class="muted">저장 실패: ' + e.message + '</span>'; })
+      .commitImport(r.groups, r.files.map(function (f) { return { id: f.id, kind: f.kind }; }));
   }
 
   // ---------- 반복 지출(템플릿) ----------
