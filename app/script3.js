@@ -152,15 +152,30 @@
           fillExpenseSelect_('ex_payMethod', opt.payMethods, '');
           fillExpenseSelect_('ex_nature', opt.natures, '');
           fillExpenseSelect_('ex_filterMajor', opt.majors, '전체 대분류');
+          fillExpenseSelect_('tpl_major', opt.majors, '');
+          fillExpenseSelect_('tpl_payMethod', opt.payMethods, '');
+          fillExpenseSelect_('tpl_nature', opt.natures, '');
           expenseOptionsLoaded_ = true;
           initExpenseDefaults_();
           loadExpenses();
+          loadExpenseTemplates();
         })
         .withFailureHandler(function (e) { toast('지출 설정 불러오기 실패: ' + e.message); })
         .getExpenseOptions();
     } else {
       loadExpenses();
+      loadExpenseTemplates();
     }
+  }
+
+  /** 고급 설정 접기/펼치기. 평소엔 접어둔다 — 실제로 손대는 건 5칸뿐이다. */
+  function toggleExpenseAdvanced() {
+    const box = document.getElementById('ex_advanced');
+    const label = document.getElementById('ex_advToggleLabel');
+    if (!box) return;
+    const willShow = box.classList.contains('hidden');
+    box.classList.toggle('hidden', !willShow);
+    if (label) label.textContent = willShow ? '⚙️ 고급 설정 접기' : '⚙️ 고급 설정 (거의 안 씁니다)';
   }
 
   /** 드롭다운 채우기. blankLabel이 있으면 맨 위에 빈 값 항목을 넣는다(필터용). */
@@ -184,6 +199,150 @@
     if (dateEl && !dateEl.value) dateEl.value = ymd;
     const monthEl = document.getElementById('ex_filterMonth');
     if (monthEl && !monthEl.value) monthEl.value = ymd.slice(0, 7);
+    const tplMonthEl = document.getElementById('ex_tplRunMonth');
+    if (tplMonthEl && !tplMonthEl.value) tplMonthEl.value = ymd.slice(0, 7);
+  }
+
+  // ---------- 반복 지출(템플릿) ----------
+  let expenseTplRows_ = [];
+  let expenseTplEditingRow_ = null;
+
+  function loadExpenseTemplates() {
+    const body = document.getElementById('expenseTplBody');
+    if (!body) return;
+    RUN()
+      .withSuccessHandler(function (rows) { renderExpenseTemplates_(rows || []); })
+      .withFailureHandler(function (e) {
+        body.innerHTML = '<tr><td colspan="9" class="muted">불러오기 실패: ' + e.message + '</td></tr>';
+      })
+      .getExpenseTemplates();
+  }
+
+  function renderExpenseTemplates_(rows) {
+    const body = document.getElementById('expenseTplBody');
+    expenseTplRows_ = rows;
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="9" class="muted">등록된 반복 지출이 없습니다. 월세·통신비처럼 매달 나가는 걸 위에서 추가해보세요.</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map(function (t) {
+      const off = t.on ? '' : ' style="opacity:.5;"';
+      return '<tr' + off + '>' +
+        '<td>' + (t.on ? '✅' : '⏸️') + '</td>' +
+        '<td>' + t.major + '</td>' +
+        '<td>' + t.item + '</td>' +
+        '<td style="text-align:right;">' + fmtMoney(t.amount) + '</td>' +
+        '<td>' + t.day + '일</td>' +
+        '<td>' + t.payMethod + '</td>' +
+        '<td>' + t.nature + '</td>' +
+        '<td>' + (t.memo || '') + '</td>' +
+        '<td style="white-space:nowrap;">' +
+          '<button class="btn-outline" style="padding:2px 8px;font-size:12px;" onclick="toggleExpenseTemplate(' + t.rowIndex + ')">' + (t.on ? '중지' : '사용') + '</button> ' +
+          '<button class="btn-outline" style="padding:2px 8px;font-size:12px;" onclick="editExpenseTemplate(' + t.rowIndex + ')">수정</button> ' +
+          '<button class="btn-outline" style="padding:2px 8px;font-size:12px;" onclick="removeExpenseTemplate(' + t.rowIndex + ')">삭제</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function findExpenseTpl_(rowIndex) {
+    return expenseTplRows_.filter(function (x) { return x.rowIndex === rowIndex; })[0];
+  }
+
+  function readExpenseTemplateForm_(on) {
+    return {
+      on: on,
+      major: document.getElementById('tpl_major').value,
+      item: document.getElementById('tpl_item').value.trim(),
+      amount: Number(document.getElementById('tpl_amount').value) || 0,
+      payMethod: document.getElementById('tpl_payMethod').value,
+      nature: document.getElementById('tpl_nature').value,
+      workPct: 100,
+      day: Number(document.getElementById('tpl_day').value) || 1,
+      memo: document.getElementById('tpl_memo').value.trim()
+    };
+  }
+
+  function resetExpenseTemplateForm() {
+    expenseTplEditingRow_ = null;
+    ['tpl_item', 'tpl_amount', 'tpl_day', 'tpl_memo'].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+  }
+
+  function submitExpenseTemplate() {
+    const tpl = readExpenseTemplateForm_(true);
+    if (!tpl.item) { toast('항목을 입력해주세요.'); return; }
+    if (!(tpl.amount > 0)) { toast('금액을 입력해주세요.'); return; }
+    if (!(tpl.day >= 1 && tpl.day <= 31)) { toast('매달 며칠에 나가는지 입력해주세요 (1~31).'); return; }
+    saveExpenseTemplate_(expenseTplEditingRow_, tpl, expenseTplEditingRow_ ? '수정했습니다.' : '반복 지출로 등록했습니다.');
+  }
+
+  function saveExpenseTemplate_(rowIndex, tpl, okMsg) {
+    RUN()
+      .withSuccessHandler(function (res) {
+        if (res && res.success) { toast(okMsg); resetExpenseTemplateForm(); loadExpenseTemplates(); }
+        else { toast((res && res.message) || '저장하지 못했습니다.'); }
+      })
+      .withFailureHandler(function (e) { toast('저장 실패: ' + e.message); })
+      .saveExpenseTemplate(rowIndex, tpl);
+  }
+
+  function editExpenseTemplate(rowIndex) {
+    const t = findExpenseTpl_(rowIndex);
+    if (!t) { toast('항목을 찾지 못했습니다. 새로고침해주세요.'); return; }
+    document.getElementById('tpl_major').value = t.major;
+    document.getElementById('tpl_item').value = t.item;
+    document.getElementById('tpl_amount').value = t.amount;
+    document.getElementById('tpl_day').value = t.day;
+    document.getElementById('tpl_payMethod').value = t.payMethod;
+    document.getElementById('tpl_nature').value = t.nature;
+    document.getElementById('tpl_memo').value = t.memo || '';
+    expenseTplEditingRow_ = rowIndex;
+    toast('수정 모드입니다. 내용을 바꾸고 추가를 누르세요.');
+  }
+
+  /** 지우지 않고 잠시 멈추기 — 예: 계약 끝난 달만 건너뛰고 싶을 때. */
+  function toggleExpenseTemplate(rowIndex) {
+    const t = findExpenseTpl_(rowIndex);
+    if (!t) { toast('항목을 찾지 못했습니다. 새로고침해주세요.'); return; }
+    const next = {
+      on: !t.on, major: t.major, item: t.item, amount: t.amount, payMethod: t.payMethod,
+      nature: t.nature, workPct: t.workPct, day: t.day, memo: t.memo
+    };
+    saveExpenseTemplate_(rowIndex, next, next.on ? '다시 사용합니다.' : '자동 생성을 중지했습니다.');
+  }
+
+  function removeExpenseTemplate(rowIndex) {
+    const t = findExpenseTpl_(rowIndex);
+    if (!t) { toast('항목을 찾지 못했습니다. 새로고침해주세요.'); return; }
+    if (!confirm('반복 지출 "' + t.item + '"을(를) 삭제할까요?\n(이미 지출대장에 들어간 기록은 그대로 남습니다)')) return;
+    RUN()
+      .withSuccessHandler(function (res) {
+        if (res && res.success) { toast('삭제했습니다.'); resetExpenseTemplateForm(); loadExpenseTemplates(); }
+        else { toast((res && res.message) || '삭제하지 못했습니다.'); }
+      })
+      .withFailureHandler(function (e) { toast('삭제 실패: ' + e.message); })
+      .deleteExpenseTemplate(rowIndex);
+  }
+
+  /** 매달 1일을 기다리지 않고 지금 바로 넣기. 이미 있는 항목은 서버가 건너뛴다. */
+  function runExpenseTemplatesNow() {
+    const ym = document.getElementById('ex_tplRunMonth').value;
+    if (!ym) { toast('넣을 달을 골라주세요.'); return; }
+    RUN()
+      .withSuccessHandler(function (res) {
+        if (!res || !res.success) { toast((res && res.message) || '실패했습니다.'); return; }
+        if (!res.added && !res.skipped) { toast('사용 중인 반복 지출이 없습니다.'); return; }
+        toast(res.ym + ' — ' + res.added + '건 넣었습니다' +
+          (res.skipped ? ' (이미 있던 ' + res.skipped + '건은 건너뜀)' : ''));
+        const f = document.getElementById('ex_filterMonth');
+        if (f) f.value = res.ym;
+        loadExpenses();
+      })
+      .withFailureHandler(function (e) { toast('실패: ' + e.message); })
+      .runExpenseTemplates(ym);
   }
 
   function readExpenseForm_() {
@@ -290,7 +449,8 @@
         '<td>' + r.date + '</td>' +
         '<td>' + r.accrualMonth + '</td>' +
         '<td>' + r.major + '</td>' +
-        '<td>' + r.item + '</td>' +
+        // 반복 지출이 자동으로 넣은 건은 표시해준다 — 금액이 그 달만 다르면 고치라는 신호
+        '<td>' + r.item + (r.source === '템플릿' ? ' <span class="muted" style="font-size:11px;">🔁</span>' : '') + '</td>' +
         '<td style="text-align:right;">' + fmtMoney(r.amount) + '</td>' +
         '<td>' + r.payMethod + '</td>' +
         '<td>' + r.nature + '</td>' +
