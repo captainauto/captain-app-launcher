@@ -424,7 +424,7 @@
     if (tab === 'doorlock') loadDoorlockCatalogTab();
     if (tab === 'dash') loadDashboard();
     if (tab === 'incentive') { loadIncentive(); loadMonthlySettlement(); }
-    if (tab === 'stats') loadStatistics();
+    if (tab === 'stats') { loadStatistics(); loadPnL(); }
     if (tab === 'album') initAlbumTab();
     if (tab === 'users') { loadNotifyUsers_(); loadNaverLinkStatus(); loadGeminiKeyStatus(); loadOpenAiKeyStatus(); }
     if (tab === 'vehicle') loadVehicleTab();

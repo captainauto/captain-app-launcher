@@ -1343,6 +1343,23 @@
       <div id="adminTab-stats" class="hidden">
         <div class="card">
           <div class="row" style="align-items:center;flex-wrap:wrap;">
+            <strong style="flex:1;min-width:140px;">💰 월손익 (실제로 얼마 남았나)</strong>
+            <select id="pnlMonthSel" style="flex:0 0 140px;" onchange="renderPnL_()"></select>
+            <button class="btn-outline" style="flex:0 0 auto;padding:4px 12px;font-size:12px;white-space:nowrap;" onclick="loadPnL()">🔄 새로고침</button>
+          </div>
+          <div id="pnlWaterfall" style="margin-top:10px;"><span class="muted">불러오는 중...</span></div>
+          <div id="pnlBreakEven" style="margin-top:10px;"></div>
+          <div id="pnlDetail" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="card">
+          <strong>📈 월별 순이익 추이</strong>
+          <p class="muted" style="margin-top:4px;font-size:12px;">파란색=매출, 초록색=매출총이익, 주황색=순이익. 막대가 아래로 내려가면 그 달은 적자입니다.</p>
+          <div id="pnlTrend" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="card">
+          <div class="row" style="align-items:center;flex-wrap:wrap;">
             <strong style="flex:1;">📊 월별 매출·마진 추이</strong>
             <select id="statsRangeSel" style="flex:0 0 140px;" onchange="renderStatsAll_()">
               <option value="6">최근 6개월</option>
@@ -1976,9 +1993,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V54.1"></script>
-<script src="script2.js?v=V54.1"></script>
-<script src="script3.js?v=V54.1"></script>
+<script src="script1.js?v=V54.3"></script>
+<script src="script2.js?v=V54.3"></script>
+<script src="script3.js?v=V54.3"></script>
 </body>
 </html>
 

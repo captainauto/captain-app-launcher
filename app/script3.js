@@ -137,6 +137,167 @@
     uploadOne(0);
   }
 
+  // ====================== 월손익 (통계 탭 상단) ======================
+  // 서버가 최근 12개월치를 한 번에 주고, 여기서 폭포수·추이·손익분기를 그린다.
+  let pnlCache_ = null;
+
+  function loadPnL() {
+    const el = document.getElementById('pnlWaterfall');
+    if (el) el.innerHTML = '<span class="muted">불러오는 중...</span>';
+    RUN()
+      .withSuccessHandler(function (res) {
+        pnlCache_ = res || { months: [] };
+        populatePnLMonths_();
+        renderPnL_();
+        renderPnLTrend_();
+      })
+      .withFailureHandler(function (e) {
+        if (el) el.innerHTML = '<span class="muted">불러오기 실패: ' + e.message + '</span>';
+      })
+      .getMonthlyPnL(12);
+  }
+
+  function populatePnLMonths_() {
+    const sel = document.getElementById('pnlMonthSel');
+    if (!sel || !pnlCache_) return;
+    const months = (pnlCache_.months || []).slice().reverse();   // 최신이 위로
+    sel.innerHTML = months.map(function (m) {
+      return '<option value="' + m.ym + '">' + m.ym + '</option>';
+    }).join('');
+  }
+
+  function pnlPct_(v) { return (v * 100).toFixed(1) + '%'; }
+
+  /** 폭포수 한 줄. sign: '+'면 더하는 줄, '-'면 빼는 줄, ''면 소계 */
+  function pnlRow_(label, amount, sign, opt) {
+    const o = opt || {};
+    const neg = amount < 0;
+    const color = o.subtotal ? (neg ? '#dc2626' : '#0f172a') : (sign === '-' ? '#dc2626' : '#0f172a');
+    const weight = o.subtotal ? '700' : '400';
+    const border = o.subtotal ? 'border-top:2px solid #cbd5e1;' : '';
+    const bg = o.highlight ? 'background:#f0fdfa;' : '';
+    const pct = (o.rate !== undefined && o.rate !== null)
+      ? '<span class="muted" style="font-size:12px;margin-left:6px;">(' + pnlPct_(o.rate) + ')</span>' : '';
+    const click = o.onclick ? ' style="cursor:pointer;text-decoration:underline;" onclick="' + o.onclick + '"' : '';
+    return '<tr style="' + border + bg + '">' +
+      '<td' + click + '>' + (sign === '-' ? '− ' : (sign === '+' ? '+ ' : '')) + label + '</td>' +
+      '<td style="text-align:right;color:' + color + ';font-weight:' + weight + ';white-space:nowrap;">' +
+        (sign === '-' ? '-' : '') + fmtMoney(Math.abs(amount)) + pct +
+      '</td></tr>';
+  }
+
+  function renderPnL_() {
+    const el = document.getElementById('pnlWaterfall');
+    const beEl = document.getElementById('pnlBreakEven');
+    const detEl = document.getElementById('pnlDetail');
+    if (!el || !pnlCache_) return;
+    if (detEl) detEl.innerHTML = '';
+
+    const ym = (document.getElementById('pnlMonthSel') || {}).value;
+    const m = (pnlCache_.months || []).filter(function (x) { return x.ym === ym; })[0];
+    if (!m) { el.innerHTML = '<span class="muted">데이터가 없습니다.</span>'; if (beEl) beEl.innerHTML = ''; return; }
+
+    let html = '<div class="table-wrap"><table><tbody>';
+    html += pnlRow_('매출 (부가세 제외)', m.revenue, '');
+    if (m.incheonFee) html += pnlRow_('인천 가맹비', m.incheonFee, '+');
+    html += pnlRow_('매출원가 (자재)', m.cost, '-');
+    html += pnlRow_('매출총이익', m.grossProfit, '', { subtotal: true, rate: m.grossRate, highlight: true });
+    if (m.labor) html += pnlRow_('인건비', m.labor, '-', { onclick: "showPnLDetail_('인건비')" });
+    if (m.car) html += pnlRow_('차량비', m.car, '-', { onclick: "showPnLDetail_('차량')" });
+    if (m.shop) html += pnlRow_('매장·사무', m.shop, '-', { onclick: "showPnLDetail_('매장')" });
+    if (m.sga) html += pnlRow_('판관비', m.sga, '-', { onclick: "showPnLDetail_('판관비')" });
+    if (m.taxMajor) html += pnlRow_('세금', m.taxMajor, '-', { onclick: "showPnLDetail_('세금')" });
+    html += pnlRow_('영업이익', m.operating, '', { subtotal: true, rate: m.operatingRate });
+    html += pnlRow_('순이익', m.net, '', { subtotal: true, rate: m.netRate, highlight: true });
+    html += '</tbody></table></div>';
+
+    // 차량비는 세 군데서 모이므로 어디서 왔는지 밝혀둔다
+    if (m.car) {
+      const d = m.carDetail || {};
+      html += '<p class="muted" style="margin-top:6px;font-size:12px;">' +
+        '차량비 내역 — 주유대장 ' + fmtMoney(d.fuel || 0) +
+        ' · 과태료 ' + fmtMoney(d.fine || 0) +
+        ' · 지출대장(충전·주차·보험·정비) ' + fmtMoney(d.expense || 0) + '</p>';
+    }
+    if (m.inProgress) {
+      html += '<p style="margin-top:8px;font-size:12px;color:#1d4ed8;background:#eff6ff;padding:8px;border-radius:6px;">' +
+        'ℹ️ ' + m.ym + '은 <strong>아직 진행 중인 달</strong>입니다. 매출도 비용도 월말까지 계속 늘어나니 중간 점검용으로 보세요.</p>';
+    }
+    if (m.legacyCostBasis) {
+      html += '<p style="margin-top:8px;font-size:12px;color:#b45309;background:#fffbeb;padding:8px;border-radius:6px;">' +
+        '⚠️ ' + m.ym + '은 <strong>참고치</strong>입니다. ' + pnlCache_.costBasisChangeYm +
+        ' 이전에 저장된 기록은 자재 원가가 부가세 포함으로 들어가 있어서, 매출총이익이 실제보다 조금 낮게 나옵니다.</p>';
+    }
+    el.innerHTML = html;
+
+    if (beEl) {
+      const gap = m.revenue - m.breakEven;
+      const reached = gap >= 0;
+      beEl.innerHTML = m.breakEven
+        ? '<div style="padding:10px;border-radius:8px;background:' + (reached ? '#f0fdf4' : '#fef2f2') + ';">' +
+            '<strong>손익분기 매출 ' + fmtMoney(m.breakEven) + '</strong> — ' +
+            (reached
+              ? '이미 넘겼습니다. ' + fmtMoney(gap) + ' 더 팔았습니다.'
+              : '<span style="color:#dc2626;">' + fmtMoney(-gap) + ' 모자랍니다.</span>') +
+            '<div class="muted" style="font-size:12px;margin-top:4px;">이 달 고정비 ' + fmtMoney(m.totalCost) +
+            '을 매출총이익률 ' + pnlPct_(m.grossRate) + '로 메우려면 필요한 매출입니다.</div>' +
+          '</div>'
+        : '';
+    }
+  }
+
+  /** 비용 줄을 누르면 그 대분류의 상세 내역을 펼친다. */
+  function showPnLDetail_(major) {
+    const detEl = document.getElementById('pnlDetail');
+    const ym = (document.getElementById('pnlMonthSel') || {}).value;
+    if (!detEl || !ym) return;
+    detEl.innerHTML = '<span class="muted">' + major + ' 내역 불러오는 중...</span>';
+    RUN()
+      .withSuccessHandler(function (rows) {
+        const list = (rows || []).filter(function (r) { return r.major === major; });
+        if (!list.length) { detEl.innerHTML = '<span class="muted">' + major + ' 내역이 없습니다.</span>'; return; }
+        detEl.innerHTML = '<strong style="font-size:13px;">' + ym + ' ' + major + ' 내역</strong>' +
+          '<div class="table-wrap" style="margin-top:6px;"><table>' +
+          '<thead><tr><th>항목</th><th>이 달 반영</th><th>원금</th><th>업무%</th><th>배분</th><th>메모</th></tr></thead><tbody>' +
+          list.map(function (r) {
+            return '<tr><td>' + r.item + '</td>' +
+              '<td style="text-align:right;">' + fmtMoney(r.amount) + '</td>' +
+              '<td style="text-align:right;" class="muted">' + fmtMoney(r['원금']) + '</td>' +
+              '<td style="text-align:right;">' + r.workPct + '%</td>' +
+              '<td>' + r.spread + '</td>' +
+              '<td class="muted">' + (r.memo || '') + '</td></tr>';
+          }).join('') + '</tbody></table></div>';
+      })
+      .withFailureHandler(function (e) { detEl.innerHTML = '<span class="muted">실패: ' + e.message + '</span>'; })
+      .getPnLDetail(ym);
+  }
+
+  function renderPnLTrend_() {
+    const el = document.getElementById('pnlTrend');
+    if (!el || !pnlCache_) return;
+    const months = pnlCache_.months || [];
+    if (!months.length) { el.innerHTML = '<span class="muted">데이터가 없습니다.</span>'; return; }
+
+    // 적자(음수 순이익)도 보여야 하므로 절대값 최대치를 기준으로 잡는다
+    const maxV = Math.max(1, ...months.map(function (m) {
+      return Math.max(m.revenue, m.grossProfit, Math.abs(m.net));
+    }));
+    el.innerHTML = months.map(function (m) {
+      const w = function (v) { return Math.round(Math.abs(v) / maxV * 100); };
+      const netColor = m.net < 0 ? '#dc2626' : '#ea580c';
+      return '<div class="bar-row">' +
+        '<span class="bar-label">' + m.ym + (m.legacyCostBasis ? ' ⚠️' : '') + '</span>' +
+        '<div class="bar-track" style="height:22px;">' +
+          '<div class="bar-fill" style="width:' + w(m.revenue) + '%;height:7px;top:0;"></div>' +
+          '<div class="bar-fill" style="width:' + w(m.grossProfit) + '%;height:7px;top:7px;background:#16a34a;"></div>' +
+          '<div class="bar-fill" style="width:' + w(m.net) + '%;height:7px;top:14px;background:' + netColor + ';"></div>' +
+        '</div>' +
+        '<span class="bar-val" style="font-size:11px;">' + fmtMoney(m.revenue) + '<br>' +
+          '<span style="color:' + netColor + ';font-weight:700;">' + (m.net < 0 ? '-' : '') + fmtMoney(Math.abs(m.net)) + '</span></span>' +
+      '</div>';
+    }).join('');
+  }
+
   // ====================== 지출관리 탭 (월손익 1단계) ======================
   // 손익 계산은 2단계에서 붙는다. 여기서는 기록을 쌓는 것까지만 한다.
   // 설계: docs/superpowers/specs/2026-08-16-월손익-설계.md
