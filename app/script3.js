@@ -220,7 +220,15 @@
     const editing = expenseEditingRow_;
     const done = function (res) {
       if (res && res.success) {
-        toast(editing ? '수정했습니다.' : '등록했습니다.');
+        // 저장한 건이 보이는 달로 목록을 옮긴다. 지출은 지난달 정산분을 넣는 게 정상이라
+        // (월세·퇴직연금·카드값), 이걸 안 하면 7월 건을 넣었는데 8월 목록이라 안 보인다.
+        // 실제로 2026-08-17에 그래서 같은 건이 7초 간격으로 2번 저장됐다.
+        if (res.accrualMonth) {
+          const f = document.getElementById('ex_filterMonth');
+          if (f) f.value = res.accrualMonth;
+        }
+        toast((editing ? '수정했습니다.' : '등록했습니다.') +
+          (res.accrualMonth ? ' (' + res.accrualMonth + ' 귀속)' : ''));
         resetExpenseForm();
         loadExpenses();
       } else {
