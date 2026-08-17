@@ -104,6 +104,19 @@
     if (done) done();
   }
 
+  /**
+   * 오늘이 속한 달을 'yyyy-MM'으로. 월 필터 기본값·"이번달" 판정에 쓴다.
+   *
+   * new Date().toISOString().slice(0,7) 을 쓰면 안 된다 — toISOString은 UTC라서 한국(UTC+9)에서는
+   * 매달 1일 오전 9시 이전에 지난달이 나온다(예: 9월 1일 오전 8시 -> '2026-08').
+   * 그 시간대에 앱을 열면 월 필터가 지난달로 잡히고, 월정산 확정도 지난달로 나갈 수 있었다.
+   * (2026-08-17 발견)
+   */
+  function currentMonthStr_() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+
   // 좁은 화면에서 목차가 가로 스크롤될 때, 누른 탭이 화면 밖이면 가운데로 끌어온다.
   // scrollIntoView는 페이지까지 세로로 움직여버려서 목차 안에서만 scrollLeft를 직접 계산한다.
   function scrollTabIntoView_(btn) {
@@ -517,7 +530,7 @@
     if (!statsCache_) return [];
     const all = statsCache_.months || [];
     if (v === 'thisMonth') {
-      const cur = new Date().toISOString().slice(0, 7);
+      const cur = currentMonthStr_();
       return all.filter(function (m) { return m.ym === cur; });
     }
     if (v === 'all') return all;
@@ -3294,11 +3307,11 @@
             document.getElementById('fine_filterVehicle').innerHTML = '<option value="">전체 차량</option>' + opts;
             onFineVehicleChange();
             const monthEl = document.getElementById('fl_filterMonth');
-            if (!monthEl.value) monthEl.value = new Date().toISOString().slice(0, 7);
+            if (!monthEl.value) monthEl.value = currentMonthStr_();
             const vsumMonthEl = document.getElementById('vsum_month');
-            if (!vsumMonthEl.value) vsumMonthEl.value = new Date().toISOString().slice(0, 7);
+            if (!vsumMonthEl.value) vsumMonthEl.value = currentMonthStr_();
             const fineMonthEl = document.getElementById('fine_filterMonth');
-            if (!fineMonthEl.value) fineMonthEl.value = new Date().toISOString().slice(0, 7);
+            if (!fineMonthEl.value) fineMonthEl.value = currentMonthStr_();
             loadFuelLogs();
             loadVehicleSummary();
             loadFines();
@@ -3310,7 +3323,7 @@
 
   function loadVehicleSummary() {
     const monthEl = document.getElementById('vsum_month');
-    const monthStr = monthEl.value || new Date().toISOString().slice(0, 7);
+    const monthStr = monthEl.value || currentMonthStr_();
     const tbody = document.getElementById('vsumBody');
     tbody.innerHTML = '<tr><td colspan="5" class="muted">불러오는 중...</td></tr>';
     RUN()
@@ -3458,6 +3471,25 @@
     document.getElementById('fl_km').classList.toggle('hidden', kind !== '킬로수');
   }
 
+  /**
+   * 저장 직후, 방금 넣은 건이 실제로 보이도록 목록 필터를 맞춘다.
+   *
+   * 이게 없으면 지난달 날짜로 넣거나 필터가 다른 차량에 걸려 있을 때 저장은 됐는데 목록에서
+   * 사라져서, "등록이 안 됐나?" 하고 다시 누르게 된다 — 2026-08-17에 지출관리에서 실제로
+   * 같은 건이 7초 간격으로 2번 저장됐다. 주유·과태료도 구조가 같아 같은 헬퍼를 쓴다.
+   *
+   * 차량 필터는 '전체 차량'(빈 값)이면 건드리지 않는다. 이미 전체가 보이고 있으므로 좁힐 이유가 없다.
+   * res: 서버가 돌려준 {month, vehicle}
+   */
+  function syncListFilterAfterSave_(monthElId, vehicleElId, res) {
+    if (!res) return '';
+    const monthEl = document.getElementById(monthElId);
+    if (monthEl && res.month) monthEl.value = res.month;
+    const vehEl = document.getElementById(vehicleElId);
+    if (vehEl && vehEl.value && res.vehicle && vehEl.value !== res.vehicle) vehEl.value = res.vehicle;
+    return res.month ? ' (' + res.month + ')' : '';
+  }
+
   function addFuelLogEntry() {
     const vehicle = document.getElementById('fl_vehicle').value;
     const date = document.getElementById('fl_date').value;
@@ -3471,8 +3503,9 @@
       agent: currentUser.name
     };
     RUN()
-      .withSuccessHandler(function () {
-        toast('기록이 추가되었습니다');
+      .withSuccessHandler(function (res) {
+        const where = syncListFilterAfterSave_('fl_filterMonth', 'fl_filterVehicle', res);
+        toast('기록이 추가되었습니다' + where);
         document.getElementById('fl_amount').value = '';
         document.getElementById('fl_km').value = '';
         loadFuelLogs();
@@ -3551,8 +3584,11 @@
       reason: document.getElementById('fine_reason').value.trim()
     };
     RUN()
-      .withSuccessHandler(function () {
-        toast(owner ? '과태료 기록이 추가되었습니다 (담당자: ' + owner + ')' : '과태료 기록이 추가됐지만 담당자 미지정이라 월정산에 반영되지 않습니다');
+      .withSuccessHandler(function (res) {
+        const where = syncListFilterAfterSave_('fine_filterMonth', 'fine_filterVehicle', res);
+        toast(owner
+          ? '과태료 기록이 추가되었습니다' + where + ' (담당자: ' + owner + ')'
+          : '과태료 기록이 추가됐지만 담당자 미지정이라 월정산에 반영되지 않습니다' + where);
         document.getElementById('fine_amount').value = '';
         document.getElementById('fine_reason').value = '';
         loadFines();
@@ -3593,7 +3629,7 @@
   // ====================== 인센티브 월정산 ======================
   function loadMonthlySettlement() {
     const monthEl = document.getElementById('settleMonth');
-    if (!monthEl.value) monthEl.value = new Date().toISOString().slice(0, 7);
+    if (!monthEl.value) monthEl.value = currentMonthStr_();
     const month = monthEl.value;
     const body = document.getElementById('settleTableBody');
     body.innerHTML = '<tr><td colspan="5" class="muted" style="padding:12px;">불러오는 중...</td></tr>';
@@ -3617,7 +3653,7 @@
 
   function confirmMonthlySettlementBtn() {
     const monthEl = document.getElementById('settleMonth');
-    const month = monthEl.value || new Date().toISOString().slice(0, 7);
+    const month = monthEl.value || currentMonthStr_();
     if (!confirm(month + ' 인센티브 월정산을 확정하고, 직원별로 [인센티브 합계 − 과태료 = 최종지급액] 안내를 보낼까요? (이미 확정한 적 있으면 이번 내용으로 덮어씁니다)')) return;
     RUN()
       .withSuccessHandler(function (res) {
