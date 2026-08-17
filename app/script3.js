@@ -202,7 +202,10 @@
     if (m.incheonFee) html += pnlRow_('인천 가맹비', m.incheonFee, '+');
     html += pnlRow_('매출원가 (자재)', m.cost, '-');
     html += pnlRow_('매출총이익', m.grossProfit, '', { subtotal: true, rate: m.grossRate, highlight: true });
-    if (m.labor) html += pnlRow_('인건비', m.labor, '-', { onclick: "showPnLDetail_('인건비')" });
+    if (m.labor) {
+      html += pnlRow_('인건비' + (m.salaryEstimate ? ' (급여는 예상)' : ''), m.labor, '-',
+        { onclick: "showPnLDetail_('인건비')" });
+    }
     if (m.car) html += pnlRow_('차량비', m.car, '-', { onclick: "showPnLDetail_('차량')" });
     if (m.shop) html += pnlRow_('매장·사무', m.shop, '-', { onclick: "showPnLDetail_('매장')" });
     if (m.sga) html += pnlRow_('판관비', m.sga, '-', { onclick: "showPnLDetail_('판관비')" });
@@ -222,6 +225,13 @@
     if (m.inProgress) {
       html += '<p style="margin-top:8px;font-size:12px;color:#1d4ed8;background:#eff6ff;padding:8px;border-radius:6px;">' +
         'ℹ️ ' + m.ym + '은 <strong>아직 진행 중인 달</strong>입니다. 매출도 비용도 월말까지 계속 늘어나니 중간 점검용으로 보세요.</p>';
+    }
+    if (m.salaryEstimate) {
+      html += '<p style="margin-top:8px;font-size:12px;color:#1d4ed8;background:#eff6ff;padding:8px;border-radius:6px;">' +
+        'ℹ️ ' + m.ym + ' 급여는 <strong>다음 달 초에 지급</strong>되므로 아직 안 나갔습니다. ' +
+        '그냥 비워두면 이익이 ' + fmtMoney(m.salaryEstimate) + '만큼 부풀어 보여서, ' +
+        '직전에 나간 급여 <strong>' + fmtMoney(m.salaryEstimate) + '</strong>을 미지급으로 잡아뒀습니다. ' +
+        '실제 지급되면 그 금액으로 바뀝니다.</p>';
     }
     if (m.legacyCostBasis) {
       html += '<p style="margin-top:8px;font-size:12px;color:#b45309;background:#fffbeb;padding:8px;border-radius:6px;">' +
