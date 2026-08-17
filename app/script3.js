@@ -179,6 +179,10 @@
     const pct = (o.rate !== undefined && o.rate !== null)
       ? '<span class="muted" style="font-size:12px;margin-left:6px;">(' + pnlPct_(o.rate) + ')</span>' : '';
     const click = o.onclick ? ' style="cursor:pointer;text-decoration:underline;" onclick="' + o.onclick + '"' : '';
+    if (o.muted) {
+      return '<tr><td class="muted" style="font-size:12px;padding-left:14px;">' + label + '</td>' +
+        '<td class="muted" style="text-align:right;font-size:12px;">' + fmtMoney(Math.abs(amount)) + '</td></tr>';
+    }
     return '<tr style="' + border + bg + '">' +
       '<td' + click + '>' + (sign === '-' ? '− ' : (sign === '+' ? '+ ' : '')) + label + '</td>' +
       '<td style="text-align:right;color:' + color + ';font-weight:' + weight + ';white-space:nowrap;">' +
@@ -199,6 +203,7 @@
 
     let html = '<div class="table-wrap"><table><tbody>';
     html += pnlRow_('매출 (부가세 제외)', m.revenue, '');
+    if (m.vatInRevenue) html += pnlRow_('└ 매출에서 뺀 부가세', m.vatInRevenue, '', { muted: true });
     if (m.incheonFee) html += pnlRow_('인천 가맹비', m.incheonFee, '+');
     html += pnlRow_('매출원가 (자재)', m.cost, '-');
     html += pnlRow_('매출총이익', m.grossProfit, '', { subtotal: true, rate: m.grossRate, highlight: true });
@@ -210,7 +215,6 @@
     if (m.shop) html += pnlRow_('매장·사무', m.shop, '-', { onclick: "showPnLDetail_('매장')" });
     if (m.sga) html += pnlRow_('판관비', m.sga, '-', { onclick: "showPnLDetail_('판관비')" });
     if (m.taxMajor) html += pnlRow_('세금', m.taxMajor, '-', { onclick: "showPnLDetail_('세금')" });
-    html += pnlRow_('영업이익', m.operating, '', { subtotal: true, rate: m.operatingRate });
     html += pnlRow_('순이익', m.net, '', { subtotal: true, rate: m.netRate, highlight: true });
     html += '</tbody></table></div>';
 
@@ -239,6 +243,20 @@
         ' 이전에 저장된 기록은 자재 원가가 부가세 포함으로 들어가 있어서, 매출총이익이 실제보다 조금 낮게 나옵니다.</p>';
     }
     el.innerHTML = html;
+
+    // 부가세는 손익이 아니라 자금 문제다 — 순이익에서 빼지 않고 "따로 준비할 돈"으로 보여준다
+    html += '<div style="margin-top:12px;padding:10px;border-radius:8px;background:#faf5ff;">' +
+      '<strong style="font-size:13px;">🧾 부가세 (순이익과 별개로 준비할 돈)</strong>' +
+      '<div style="margin-top:6px;font-size:13px;">' +
+        '받은 부가세 <strong>' + fmtMoney(m.vatOnSales) + '</strong>' +
+        ' − 자재 매입세액(최대) ' + fmtMoney(m.vatOnPurchaseMax) +
+        ' = <strong style="color:#7c3aed;">' + fmtMoney(m.vatPayableMax) + '</strong> 쯤 나갈 예정' +
+      '</div>' +
+      '<div class="muted" style="font-size:12px;margin-top:4px;">' +
+        '이 돈은 <strong>손님한테 받아서 국가에 그대로 내는 남의 돈</strong>이라 순이익에서 빼지 않습니다. ' +
+        '다만 7월·1월에 목돈으로 나가니 미리 떼어두세요. ' +
+        '매입세액은 자재를 전부 세금계산서로 샀다고 본 최대치라, 현금매입이 섞이면 실제 납부액은 더 많습니다.' +
+      '</div></div>';
 
     if (beEl) {
       const gap = m.revenue - m.breakEven;
