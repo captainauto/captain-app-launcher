@@ -223,8 +223,9 @@
       const d = m.carDetail || {};
       html += '<p class="muted" style="margin-top:6px;font-size:12px;">' +
         '차량비 내역 — 주유대장 ' + fmtMoney(d.fuel || 0) +
+        ' · 정비대장 ' + fmtMoney(d.maint || 0) +
         ' · 과태료 ' + fmtMoney(d.fine || 0) +
-        ' · 지출대장(충전·주차·보험·정비) ' + fmtMoney(d.expense || 0) + '</p>';
+        ' · 지출대장(충전·주차·보험) ' + fmtMoney(d.expense || 0) + '</p>';
     }
     if (m.inProgress) {
       html += '<p style="margin-top:8px;font-size:12px;color:#1d4ed8;background:#eff6ff;padding:8px;border-radius:6px;">' +
@@ -444,15 +445,16 @@
 
     // 직원 카드의 주유·주차가 주유대장·장부와 맞는지 — 차이가 나는 달만 짚어준다
     if (r.fieldCheck && r.fieldCheck.length) {
-      const bad = r.fieldCheck.filter(function (c) { return c.fuelGap || c.parkGap; });
+      const bad = r.fieldCheck.filter(function (c) { return c.fuelGap || c.maintGap || c.parkGap; });
       html += '<div style="margin-top:12px;padding:10px;border-radius:8px;background:' +
         (bad.length ? '#fffbeb' : '#f0fdf4') + ';">' +
         '<strong style="font-size:13px;">🔍 현장 지출 교차검증</strong>' +
         '<div class="muted" style="font-size:12px;margin:4px 0;">' +
-          '카드로 쓴 주유·주차가 <strong>주유대장</strong>과 <strong>장부(추가비용)</strong>에 제대로 들어갔는지 대조합니다. ' +
-          '차이가 나면 기재를 빠뜨렸거나 업무 외 사용일 수 있습니다.</div>' +
+          '카드로 쓴 주유·정비·주차가 <strong>주유대장</strong>·<strong>정비대장</strong>·<strong>장부(추가비용)</strong>에 ' +
+          '제대로 들어갔는지 대조합니다. 차이가 나면 기재를 빠뜨렸거나 업무 외 사용일 수 있습니다.</div>' +
         '<div class="table-wrap"><table><thead><tr><th>월</th>' +
           '<th>카드 주유</th><th>주유대장</th><th>차이</th>' +
+          '<th>카드 정비</th><th>정비대장</th><th>차이</th>' +
           '<th>카드 주차</th><th>장부 기재</th><th>차이</th></tr></thead><tbody>' +
         r.fieldCheck.map(function (c) {
           const gapCell = function (g) {
@@ -463,6 +465,8 @@
           return '<tr><td>' + c.ym + '</td>' +
             '<td style="text-align:right;">' + fmtMoney(c.fuelCard) + '</td>' +
             '<td style="text-align:right;">' + fmtMoney(c.fuelLog) + '</td>' + gapCell(c.fuelGap) +
+            '<td style="text-align:right;">' + fmtMoney(c.maintCard) + '</td>' +
+            '<td style="text-align:right;">' + fmtMoney(c.maintLog) + '</td>' + gapCell(c.maintGap) +
             '<td style="text-align:right;">' + fmtMoney(c.parkCard) + '</td>' +
             '<td style="text-align:right;">' + fmtMoney(c.parkLedger) + '</td>' + gapCell(c.parkGap) +
           '</tr>';

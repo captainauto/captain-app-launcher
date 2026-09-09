@@ -3305,16 +3305,25 @@
             document.getElementById('fl_filterVehicle').innerHTML = '<option value="">전체 차량</option>' + opts;
             document.getElementById('fine_vehicle').innerHTML = opts;
             document.getElementById('fine_filterVehicle').innerHTML = '<option value="">전체 차량</option>' + opts;
+            document.getElementById('mt_vehicle').innerHTML = opts;
+            document.getElementById('mt_filterVehicle').innerHTML = '<option value="">전체 차량</option>' + opts;
             onFineVehicleChange();
+            onMaintVehicleChange();
             const monthEl = document.getElementById('fl_filterMonth');
             if (!monthEl.value) monthEl.value = currentMonthStr_();
             const vsumMonthEl = document.getElementById('vsum_month');
             if (!vsumMonthEl.value) vsumMonthEl.value = currentMonthStr_();
             const fineMonthEl = document.getElementById('fine_filterMonth');
             if (!fineMonthEl.value) fineMonthEl.value = currentMonthStr_();
+            // 정비내역은 달을 비워둔 채로 시작한다 — 이번 달에 정비가 없는 게 보통이라
+            // 이번 달로 걸어두면 처음 열었을 때 늘 비어 보인다. 이력 전체를 보여주는 게 맞다.
+            const mtDateEl = document.getElementById('mt_date');
+            if (mtDateEl && !mtDateEl.value) mtDateEl.valueAsDate = new Date();
+            fillMaintKinds_();
             loadFuelLogs();
             loadVehicleSummary();
             loadFines();
+            loadMaints();
           })
           .getVehicleInfo();
       })
@@ -3561,6 +3570,94 @@
   function deleteFuelLogEntry(rowIndex) {
     if (!confirm('이 기록을 삭제할까요?')) return;
     RUN().withSuccessHandler(function () { loadFuelLogs(); }).deleteFuelLog(rowIndex);
+  }
+
+  // ====================== 차량 정비내역 ======================
+  // 정비구분 목록은 서버(Vehicle.js MAINT_KINDS)가 갖고 있다 — 화면에 또 적어두면 둘이 어긋난다.
+  let maintKindsCache_ = [];
+  function fillMaintKinds_() {
+    const sel = document.getElementById('mt_kind');
+    if (!sel || sel.options.length) return;         // 탭을 다시 열 때마다 서버를 또 부르지 않는다
+    RUN()
+      .withSuccessHandler(function (kinds) {
+        maintKindsCache_ = Array.isArray(kinds) ? kinds : [];
+        sel.innerHTML = maintKindsCache_.map(k => '<option value="' + k + '">' + k + '</option>').join('');
+      })
+      .withFailureHandler(function () {})
+      .getMaintKinds();
+  }
+
+  /** 정비도 과태료처럼 차량에 귀속된다. 다만 회사 비용이라 인센티브에서 차감하지는 않는다. */
+  function onMaintVehicleChange() {
+    const vehicle = document.getElementById('mt_vehicle').value;
+    const owner = (vehicleListCache.find(v => v.name === vehicle) || {}).owner || '';
+    const hint = document.getElementById('mt_ownerHint');
+    if (hint) hint.textContent = owner ? ('담당자: ' + owner + ' (회사 비용이라 인센티브에서 차감되지 않습니다)') : '';
+  }
+
+  function addMaintEntry() {
+    const vehicle = document.getElementById('mt_vehicle').value;
+    const date = document.getElementById('mt_date').value;
+    const amount = document.getElementById('mt_amount').value;
+    const content = document.getElementById('mt_content').value.trim();
+    if (!vehicle) { toast('차량을 등록·선택하세요'); return; }
+    if (!date) { toast('날짜를 입력하세요'); return; }
+    if (!(Number(amount) > 0)) { toast('금액을 0보다 크게 입력하세요'); return; }
+    if (!content) { toast('무슨 정비였는지 내용을 적어주세요'); return; }
+    const owner = (vehicleListCache.find(v => v.name === vehicle) || {}).owner || '';
+    const entry = {
+      vehicle: vehicle, date: date, agent: owner,
+      kind: document.getElementById('mt_kind').value,
+      content: content,
+      amount: amount,
+      shop: document.getElementById('mt_shop').value.trim(),
+      km: document.getElementById('mt_km').value
+    };
+    RUN()
+      .withSuccessHandler(function (res) {
+        const where = syncListFilterAfterSave_('mt_filterMonth', 'mt_filterVehicle', res);
+        toast('정비내역이 추가되었습니다' + where + (res && res.oilUpdated ? ' · 엔진오일 교체일도 갱신했습니다' : ''));
+        document.getElementById('mt_amount').value = '';
+        document.getElementById('mt_content').value = '';
+        document.getElementById('mt_shop').value = '';
+        document.getElementById('mt_km').value = '';
+        loadMaints();
+        if (res && res.oilUpdated) loadVehicleTab();   // 차량정보 카드의 교체일을 새로 그린다
+      })
+      .withFailureHandler(e => toast('오류: ' + e.message))
+      .addMaintenance(entry);
+  }
+
+  function loadMaints() {
+    const vehicle = document.getElementById('mt_filterVehicle').value;
+    const month = document.getElementById('mt_filterMonth').value;
+    RUN()
+      .withSuccessHandler(function (rows) {
+        const list = Array.isArray(rows) ? rows : [];
+        document.getElementById('maintBody').innerHTML = list.length ? list.map(r => `
+          <tr>
+            <td>${escapeHtml_(r.date)}</td><td>${escapeHtml_(r.vehicle)}</td><td>${escapeHtml_(r.kind||'-')}</td>
+            <td>${escapeHtml_(r.content||'')}</td><td>${fmtMoney(r.amount)}</td>
+            <td>${escapeHtml_(r.shop||'-')}</td>
+            <td>${r.km ? Number(r.km).toLocaleString() + 'km' : '-'}</td>
+            <td><button class="btn-danger" style="padding:2px 8px;font-size:12px;" onclick="deleteMaintEntry(${r.rowIndex})">삭제</button></td>
+          </tr>`).join('') : '<tr><td colspan="8" class="muted" style="padding:12px;">해당 조건의 정비내역이 없습니다</td></tr>';
+        const total = list.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+        document.getElementById('maintSummary').innerHTML = `
+          <div class="stat-card">
+            <div class="stat-label">이번 조회 총 정비비</div>
+            <div class="stat-value">${fmtMoney(total)}</div>
+            <div class="stat-delta" style="color:var(--muted);">${list.length}건</div>
+          </div>
+        `;
+      })
+      .withFailureHandler(e => toast('정비내역 오류: ' + e.message))
+      .getMaintenances(vehicle, month);
+  }
+
+  function deleteMaintEntry(rowIndex) {
+    if (!confirm('이 정비내역을 삭제할까요? (손익의 차량비에서도 빠집니다)')) return;
+    RUN().withSuccessHandler(function () { loadMaints(); }).deleteMaintenance(rowIndex);
   }
 
   // ====================== 차량 과태료 ======================
