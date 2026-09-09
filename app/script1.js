@@ -17,7 +17,7 @@
 
   // 화면에 보이는 버전 배지(V53.x). 배포 때마다 여기를 올리고, 이번 업데이트 요약 한 줄은
   // 서버의 Changelog.js에 추가한다 — 그러면 로그인 시 1회성 팝업으로 자동 안내된다.
-  const APP_VERSION = 'V55.3';
+  const APP_VERSION = 'V55.4';
   // 변경이력(APP_CHANGELOG)은 46KB나 돼서 서버(Changelog.js)로 옮겼다 — 팝업이나 "업데이트 내역" 탭을
   // 실제로 열 때만 getChangelog()로 가져온다. 새 버전 안내를 추가할 곳도 이제 Changelog.js다.
 
@@ -78,7 +78,13 @@
     loadChangelog_(function (list) { renderWhatsNewModal_(list); });
   }
 
-  /** entries: [{v, text}, ...] 최신순 */
+  /**
+   * entries: [{v, text}, ...] 최신순
+   *
+   * 본문은 escapeHtml_ 하지 않는다 — 변경이력은 Changelog.js에 우리가 직접 써넣는 상수라
+   * 사용자 입력이 섞일 경로가 없고, 원래 <b>로 강조하라고 쓴 태그다. 이스케이프하면
+   * "<b>차량관리에...</b>"처럼 태그가 그대로 보인다(2026-09-09까지 실제로 그렇게 보였다).
+   */
   function renderWhatsNewModal_(entries) {
     if (!entries.length) return;
     document.getElementById('whatsNewVersion').textContent =
@@ -86,7 +92,7 @@
     document.getElementById('whatsNewBody').innerHTML = entries.map(c => `
       <div style="margin-bottom:10px;">
         <strong style="color:#22c55e;">${c.v}</strong>
-        <div style="margin-top:2px;">${escapeHtml_(c.text || '')}</div>
+        <div style="margin-top:2px;">${c.text || ''}</div>
       </div>`).join('');
     document.getElementById('whatsNewModal').classList.remove('hidden');
   }
@@ -105,7 +111,7 @@
     loadChangelog_(function (list) {
       const html = list.map(c => `<div class="card" style="margin-bottom:10px;">
         <strong style="color:#22c55e;">${c.v}</strong>
-        <p style="margin:6px 0 0;line-height:1.6;">${escapeHtml_(c.text || '')}</p>
+        <p style="margin:6px 0 0;line-height:1.6;">${c.text || ''}</p>
       </div>`).join('');
       ['adminTab-changelog-body', 'empTab-changelog-body'].forEach(function (id) {
         const el = document.getElementById(id);
