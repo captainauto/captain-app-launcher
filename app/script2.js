@@ -1694,6 +1694,20 @@
       .forceFullLedgerScan();
   }
 
+  // 'yyyy-MM-dd…' → 요일 한 글자('월'). 형식이 다르면 ''.
+  // 대시보드는 날짜만 보여서 "그날이 주말이었나"를 매번 달력으로 확인해야 했다(2026-09-15 사장님 요청).
+  function dowOf_(ymd) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ymd || ''));
+    if (!m) return '';
+    return ['일', '월', '화', '수', '목', '금', '토'][new Date(+m[1], +m[2] - 1, +m[3]).getDay()];
+  }
+
+  /** 표에 쓰는 날짜: '2026-09-09 (수)'. 요일을 못 구하면 날짜만 그대로. */
+  function dateWithDow_(ymd) {
+    const d = dowOf_(ymd);
+    return String(ymd || '') + (d ? ' (' + d + ')' : '');
+  }
+
   /** 그리는 부분만 떼어냈다 — 첫 화면은 묶음(getDashboardBundle)에서 받은 걸 그대로 넘기고,
    *  완료/제외 처리 후에는 loadTodayTax()로 그 목록만 다시 받아 그린다. */
   function renderTodayTax_(rows) {
@@ -1708,7 +1722,7 @@
     }
     body.innerHTML = list.map(r => `
       <tr onclick='editRowInForm(${jsonAttr_(r)})' style="cursor:pointer;">
-        <td>${escapeHtml_(r.date||'')}</td><td>${escapeHtml_(r.address||'')}</td><td>${escapeHtml_(r.content||'')}</td><td style="background:#EAD1DC;">${fmtMoney(r.amount)}</td><td style="background:#B7E1CD;">${escapeHtml_(r.agent||'')}</td>
+        <td style="white-space:nowrap;">${escapeHtml_(dateWithDow_(r.date||''))}</td><td>${escapeHtml_(r.address||'')}</td><td>${escapeHtml_(r.content||'')}</td><td style="background:#EAD1DC;">${fmtMoney(r.amount)}</td><td style="background:#B7E1CD;">${escapeHtml_(r.agent||'')}</td>
         <td>
           <button class="btn-outline" style="padding:4px 8px;font-size:12px;" onclick='event.stopPropagation();openBizRegModal(${jsonAttr_(r)})'>보기</button>
           <button class="btn-primary" style="padding:4px 8px;font-size:12px;" onclick='event.stopPropagation();doTaxDone(${jsonAttr_(r)}, this)'>완료</button>
@@ -1774,7 +1788,7 @@
     }
     body.innerHTML = list.map(r => `
       <tr>
-        <td>${escapeHtml_(r.date||'')}</td><td>${escapeHtml_(r.address||'')}</td><td>${escapeHtml_(r.content||'')}</td><td style="background:#EAD1DC;">${fmtMoney(r.amount)}</td><td style="background:#B7E1CD;">${escapeHtml_(r.agent||'')}</td>
+        <td style="white-space:nowrap;">${escapeHtml_(dateWithDow_(r.date||''))}</td><td>${escapeHtml_(r.address||'')}</td><td>${escapeHtml_(r.content||'')}</td><td style="background:#EAD1DC;">${fmtMoney(r.amount)}</td><td style="background:#B7E1CD;">${escapeHtml_(r.agent||'')}</td>
         <td><button class="btn-primary" style="padding:4px 10px;font-size:12px;" onclick="doCashDone(${r.rowIndex}, this)">완료</button></td>
       </tr>`).join('');
   }
@@ -1950,7 +1964,7 @@
     return trend.map(function (t) {
       const w = Math.round(t.total / maxTotal * 100);
       const mw = t.total ? Math.round(t.margin / maxTotal * 100) : 0;
-      const label = t.day.slice(5).replace('-', '/');
+      const label = t.day.slice(5).replace('-', '/') + (dowOf_(t.day) ? '(' + dowOf_(t.day) + ')' : '');
       return `<div class="bar-row">
         <span class="bar-label">${label}</span>
         <div class="bar-track">
@@ -1991,7 +2005,7 @@
     branchTrend.forEach(function (bt) { bt.days.forEach(function (d) { maxTotal = Math.max(maxTotal, d.total); }); });
 
     document.getElementById('dashBranchTrendBody').innerHTML = days.map(function (day, di) {
-      const label = String(day.day).slice(5).replace('-', '/');
+      const label = String(day.day).slice(5).replace('-', '/') + (dowOf_(day.day) ? '(' + dowOf_(day.day) + ')' : '');
       const rows = branchTrend.map(function (bt, bi) {
         const d = bt.days[di];
         const color = BRANCH_COLORS_[bi % BRANCH_COLORS_.length];
@@ -2032,7 +2046,7 @@
     } else {
       body.innerHTML = unpaid.map(u => `
         <tr onclick='editRowInForm(${jsonAttr_(u)})' style="cursor:pointer;">
-          <td style="white-space:nowrap;">${escapeHtml_(u.date)}</td>${truncTd_(u.address||'', 190)}${truncTd_(u.content||'', 190)}<td style="background:#B7E1CD;">${escapeHtml_(u.agent||'')}</td>
+          <td style="white-space:nowrap;">${escapeHtml_(dateWithDow_(u.date))}</td>${truncTd_(u.address||'', 190)}${truncTd_(u.content||'', 190)}<td style="background:#B7E1CD;">${escapeHtml_(u.agent||'')}</td>
           <td>${escapeHtml_(u.source||'')}</td>
           <td style="white-space:nowrap;background:#EAD1DC;">${fmtMoney(u.amount)}</td><td>${payTypeShort_(u.payType)}</td>${truncTd_(u.note||'', 114)}
           <td><button class="btn-primary" style="padding:4px 10px;font-size:12px;" onclick="event.stopPropagation();doUnpaidDone(${u.rowIndex}, this)">완료</button></td>
