@@ -3503,6 +3503,11 @@
     return res.month ? ' (' + res.month + ')' : '';
   }
 
+  // 수정 중인 주유 기록(목록에서 본 그대로). null이면 입력 폼은 '기록 추가' 모드다.
+  // 수정은 위 입력 폼을 그대로 다시 쓴다 — 칸이 똑같아서 따로 창을 만들 이유가 없다.
+  let fuelEditing_ = null;
+  let fuelLogsShown_ = [];
+
   function addFuelLogEntry() {
     const vehicle = document.getElementById('fl_vehicle').value;
     const date = document.getElementById('fl_date').value;
@@ -3515,6 +3520,19 @@
       km: document.getElementById('fl_km').value,
       agent: currentUser.name
     };
+    if (fuelEditing_) {
+      RUN()
+        .withSuccessHandler(function (res) {
+          if (!res || !res.success) { toast((res && res.message) || '수정하지 못했습니다'); return; }
+          const where = syncListFilterAfterSave_('fl_filterMonth', 'fl_filterVehicle', res);
+          toast('기록이 수정되었습니다' + where);
+          cancelFuelLogEdit();
+          loadFuelLogs();
+        })
+        .withFailureHandler(e => toast('오류: ' + e.message))
+        .updateFuelLog(fuelEditing_.rowIndex, entry, fuelEditing_);
+      return;
+    }
     RUN()
       .withSuccessHandler(function (res) {
         const where = syncListFilterAfterSave_('fl_filterMonth', 'fl_filterVehicle', res);
@@ -3527,19 +3545,47 @@
       .addFuelLog(entry);
   }
 
+  // 목록의 수정 버튼 → 위 입력 폼에 그 기록을 채우고 '수정 저장' 모드로 바꾼다
+  function editFuelLogEntry(i) {
+    const r = fuelLogsShown_[i];
+    if (!r) return;
+    fuelEditing_ = r;
+    document.getElementById('fl_vehicle').value = r.vehicle;
+    document.getElementById('fl_date').value = r.date;
+    document.getElementById('fl_kind').value = r.kind;
+    onFuelKindChange();
+    document.getElementById('fl_amount').value = r.kind === '주유' ? (r.amount || '') : '';
+    document.getElementById('fl_km').value = r.kind === '킬로수' ? (r.km || '') : '';
+    document.getElementById('fl_formTitle').textContent = '주유대장 기록 수정 — ' + r.date + ' ' + r.vehicle;
+    document.getElementById('fl_submitBtn').textContent = '수정 저장';
+    document.getElementById('fl_cancelEditBtn').classList.remove('hidden');
+    document.getElementById('fl_formTitle').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function cancelFuelLogEdit() {
+    fuelEditing_ = null;
+    document.getElementById('fl_formTitle').textContent = '주유대장 기록 추가';
+    document.getElementById('fl_submitBtn').textContent = '기록 추가';
+    document.getElementById('fl_cancelEditBtn').classList.add('hidden');
+    document.getElementById('fl_amount').value = '';
+    document.getElementById('fl_km').value = '';
+  }
+
   function loadFuelLogs() {
     const vehicle = document.getElementById('fl_filterVehicle').value;
     const month = document.getElementById('fl_filterMonth').value;
     RUN()
       .withSuccessHandler(function (logs) {
         const list = Array.isArray(logs) ? logs : [];
-        document.getElementById('fuelLogBody').innerHTML = list.map(r => `
+        fuelLogsShown_ = list;
+        document.getElementById('fuelLogBody').innerHTML = list.map((r, i) => `
           <tr>
             <td>${escapeHtml_(r.date)}</td><td>${escapeHtml_(r.vehicle)}</td><td>${escapeHtml_(r.kind)}</td>
             <td>${r.km ? Number(r.km).toLocaleString() + 'km' : '-'}</td>
             <td>${r.amount ? fmtMoney(r.amount) : '-'}</td>
             <td>${escapeHtml_(r.agent)}</td>
-            <td><button class="btn-danger" style="padding:2px 8px;font-size:12px;" onclick="deleteFuelLogEntry(${r.rowIndex})">삭제</button></td>
+            <td style="white-space:nowrap;"><button class="btn-outline" style="padding:2px 8px;font-size:12px;" onclick="editFuelLogEntry(${i})">수정</button>
+              <button class="btn-danger" style="padding:2px 8px;font-size:12px;" onclick="deleteFuelLogEntry(${r.rowIndex})">삭제</button></td>
           </tr>`).join('');
         const totalFuel = list.filter(r => r.kind === '주유').reduce((s, r) => s + (Number(r.amount) || 0), 0);
         // "전체 차량" 필터일 때 차량 구분 없이 전체 킬로수 중 최대-최소로 계산하면 서로 다른

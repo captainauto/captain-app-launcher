@@ -1005,7 +1005,7 @@
           </div>
         </div>
         <div class="card">
-          <strong>주유대장 기록 추가</strong>
+          <strong id="fl_formTitle">주유대장 기록 추가</strong>
           <div class="row" style="margin-top:8px;flex-wrap:wrap;">
             <select id="fl_vehicle" style="flex:1;min-width:120px;"></select>
             <input id="fl_date" type="date" style="flex:1;min-width:120px;" />
@@ -1015,7 +1015,8 @@
             </select>
             <input id="fl_amount" type="number" placeholder="주유 금액" style="flex:1;min-width:110px;" />
             <input id="fl_km" type="number" placeholder="총 킬로수" style="flex:1;min-width:110px;" class="hidden" />
-            <button class="btn-primary" onclick="addFuelLogEntry()">기록 추가</button>
+            <button id="fl_submitBtn" class="btn-primary" onclick="addFuelLogEntry()">기록 추가</button>
+            <button id="fl_cancelEditBtn" class="btn-outline hidden" onclick="cancelFuelLogEdit()">취소</button>
           </div>
         </div>
         <div class="card">
@@ -2044,9 +2045,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V55.5"></script>
-<script src="script2.js?v=V55.5"></script>
-<script src="script3.js?v=V55.5"></script>
+<script src="script1.js?v=V55.6"></script>
+<script src="script2.js?v=V55.6"></script>
+<script src="script3.js?v=V55.6"></script>
 </body>
 </html>
 
