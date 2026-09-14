@@ -17,7 +17,7 @@
 
   // 화면에 보이는 버전 배지(V53.x). 배포 때마다 여기를 올리고, 이번 업데이트 요약 한 줄은
   // 서버의 Changelog.js에 추가한다 — 그러면 로그인 시 1회성 팝업으로 자동 안내된다.
-  const APP_VERSION = 'V55.4';
+  const APP_VERSION = 'V55.5';
   // 변경이력(APP_CHANGELOG)은 46KB나 돼서 서버(Changelog.js)로 옮겼다 — 팝업이나 "업데이트 내역" 탭을
   // 실제로 열 때만 getChangelog()로 가져온다. 새 버전 안내를 추가할 곳도 이제 Changelog.js다.
 
@@ -696,7 +696,7 @@
       document.getElementById('bizreg_ledgerAddress').value = r.address || '';
       document.getElementById('bizreg_ledgerContent').value = r.content || '';
       document.getElementById('bizreg_ledgerAmount').value = fmtMoney(r.amount);
-      document.getElementById('bizreg_ledgerRemark').value = r.remark || '';
+      document.getElementById('bizreg_ledgerRemark').value = r.remark || r.note || ''; // 장부검색·최근 장부 행은 remark 없이 note로 온다
       if (ledgerInfoEl) ledgerInfoEl.classList.remove('hidden');
     } else if (ledgerInfoEl) {
       ledgerInfoEl.classList.add('hidden');
@@ -771,7 +771,10 @@
           } else {
             document.getElementById('bizregFormStatus').textContent = '';
           }
+          // 다시 올리기일 때 OCR은 이메일을 못 읽으므로, 폼에 이미 있던 이메일은 그대로 살려둔다
+          const prevEmail = document.getElementById('bizreg_email').value.trim();
           fillBizRegForm_(res.fields);
+          if (!res.fields.email && prevEmail) document.getElementById('bizreg_email').value = prevEmail;
           renderBizRegPreview_(res.fileId, file.name);
           document.getElementById('bizregUploadView').classList.add('hidden');
           document.getElementById('bizregFormView').classList.remove('hidden');
@@ -2147,6 +2150,7 @@
     // 드롭존을 숨길 필요가 애초에 없었음). "보기/추가" 버튼은 이미 첨부된 사진을 확인하는 용도로 남겨둔다.
 
     loadEDocLink(prefix, r.rowIndex);
+    loadEBizReg_(prefix, r);
 
     const formEl = document.getElementById(prefix === 'a' ? 'adminTab-input' : 'empTab-input');
     if (formEl && formEl.scrollIntoView) formEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2195,6 +2199,7 @@
     const mediaWrap = document.getElementById(prefix + '_mediaInputWrap');
     if (mediaWrap) mediaWrap.classList.remove('hidden');
     loadEDocLink(prefix, null); // 다음 신규 입력을 위해 문서연결 선택 상태 초기화
+    loadEBizReg_(prefix, null);
   }
 
   function cancelEdit(prefix) {
@@ -2225,6 +2230,31 @@
       .withFailureHandler(e => toast('오류: ' + e.message));
     if (isOwn) call.deleteOwnEntry(rowIndex, currentUser.name, rowId);
     else call.deleteEntry(rowIndex, rowId);
+  }
+
+  // 수정 중인 기록에 이미 올라간 사업자등록증 — 입력 폼의 등록증 칸은 "올리기 전용"이라 늘 비어 보여서,
+  // 없는 줄 알고 다시 올리면 기존 등록증이 새 파일로 바뀐다. 있으면 칸 위에 알리고 바로 열어볼 수 있게 한다.
+  let eBizRegRow_ = null;
+  function loadEBizReg_(prefix, r) {
+    const el = document.getElementById(prefix + '_bizRegExisting');
+    eBizRegRow_ = null;
+    if (!el) return;
+    el.classList.add('hidden');
+    el.innerHTML = '';
+    if (!r || !r.rowIndex) return; // 신규 입력 중이거나 수정 종료
+    RUN()
+      .withSuccessHandler(function (res) {
+        if (editState.rowIndex !== r.rowIndex || !res || !res.exists) return; // 그 사이 다른 행을 열었으면 무시
+        eBizRegRow_ = r;
+        const f = res.fields || {};
+        const label = [f.name, f.bizNo].filter(function (v) { return v; }).join(' · ');
+        el.innerHTML = '✅ 사업자등록증 등록돼 있음' + (label ? ' — ' + escapeHtml_(label) : '') +
+          ' <a href="#" onclick="event.preventDefault();openBizRegModal(eBizRegRow_)" style="font-weight:600;">보기</a>' +
+          '<div style="font-size:12px;color:#92400e;margin-top:2px;">아래에 새 파일을 올리면 기존 등록증이 새 파일로 바뀝니다</div>';
+        el.classList.remove('hidden');
+      })
+      .withFailureHandler(function () {  })
+      .getBizRegForRow(r.rowIndex);
   }
 
   let eDocLinkState_ = { fileId: null };
@@ -2534,12 +2564,13 @@
                     .withSuccessHandler(function () {
                       toast(ocrRes.ocrError
                         ? ('사업자등록증 저장됨. 인식 실패 원인: ' + ocrRes.ocrError)
-                        : '사업자등록증 자동인식 완료 (대시보드에서 확인 가능)');
+                        : '사업자등록증 자동인식 완료 (장부 검색의 🧾에서 확인 가능)');
                     })
                     .withFailureHandler(function (e) {
                       toast('⚠️ 사진은 업로드됐지만 정보 저장에 실패했습니다: ' + e.message + ' — 다시 시도해주세요');
                     })
-                    .saveBizReg(targetRowIndex, ocrRes.fileId, bizFile.name, ocrRes.fields, currentUser.name);
+                    // 마지막 true: 이메일 칸을 비워둔 채 파일만 다시 올려도 저장돼 있던 이메일은 지우지 않는다
+                    .saveBizReg(targetRowIndex, ocrRes.fileId, bizFile.name, ocrRes.fields, currentUser.name, true);
                 } else {
                   toast('사업자등록증 처리에 실패했습니다.');
                 }

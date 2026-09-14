@@ -219,6 +219,7 @@
           <span class="badge">수정</span>
           ${r.docLink ? `<a href="https://drive.google.com/file/d/${r.docLink.fileId}/view" target="_blank" onclick="event.stopPropagation()">📄</a>` : ''}
           ${r.mediaCount ? `<a href="#" onclick="event.stopPropagation();event.preventDefault();openMediaModal(${r.rowIndex})">📷${r.mediaCount}</a>` : ''}
+          ${r.hasBizReg ? `<a href="#" title="사업자등록증 보기" onclick='event.stopPropagation();event.preventDefault();openBizRegModal(${jsonAttr_(r)})'>🧾</a>` : ''}
         </td>
       </tr>`).join('');
   }
@@ -332,6 +333,7 @@
           <span class="badge">수정</span>
           ${r.docLink ? `<a href="https://drive.google.com/file/d/${r.docLink.fileId}/view" target="_blank" onclick="event.stopPropagation()">📄</a>` : ''}
           ${r.mediaCount ? `<a href="#" onclick="event.stopPropagation();event.preventDefault();openMediaModal(${r.rowIndex})">📷${r.mediaCount}</a>` : ''}
+          ${r.hasBizReg ? `<a href="#" title="사업자등록증 보기" onclick='event.stopPropagation();event.preventDefault();openBizRegModal(${jsonAttr_(r)})'>🧾</a>` : ''}
         </td>
       </tr>`).join('') + '</tbody></table></div>';
   }
@@ -949,6 +951,7 @@
           <span class="badge">수정</span>
           ${r.docLink ? `<a href="https://drive.google.com/file/d/${r.docLink.fileId}/view" target="_blank" onclick="event.stopPropagation()">📄</a>` : ''}
           ${r.mediaCount ? `<a href="#" onclick="event.stopPropagation();event.preventDefault();openMediaModal(${r.rowIndex})">📷${r.mediaCount}</a>` : ''}
+          ${r.hasBizReg ? `<a href="#" title="사업자등록증 보기" onclick='event.stopPropagation();event.preventDefault();openBizRegModal(${jsonAttr_(r)})'>🧾</a>` : ''}
           <a href="#" title="블로그 작성 요청" onclick='event.stopPropagation();event.preventDefault();openBlogRequestModal(${jsonAttr_(r)})'>✍️</a>
           ${r.mediaCount ? `<a href="#" title="사진 다운로드 준비" onclick='event.stopPropagation();event.preventDefault();openPhotoDownloadModal(${jsonAttr_(r)})'>📥</a>` : ''}
         </td>
@@ -2988,6 +2991,7 @@
         <td><span class="badge">수정</span>
           ${r.docLink ? `<a href="https://drive.google.com/file/d/${r.docLink.fileId}/view" target="_blank" onclick="event.stopPropagation()" title="${escapeHtml_(r.docLink.client)} 문서 보기">📄</a>` : ''}
           ${r.mediaCount ? `<a href="#" onclick="event.stopPropagation();event.preventDefault();openMediaModal(${r.rowIndex})" title="현장 사진/영상 보기">📷${r.mediaCount}</a>` : ''}
+          ${r.hasBizReg ? `<a href="#" title="사업자등록증 보기" onclick='event.stopPropagation();event.preventDefault();openBizRegModal(${jsonAttr_(r)})'>🧾</a>` : ''}
           <a href="#" title="블로그 작성 요청" onclick='event.stopPropagation();event.preventDefault();openBlogRequestModal(${jsonAttr_(r)})'>✍️</a>
           ${r.mediaCount ? `<a href="#" title="사진 다운로드 준비" onclick='event.stopPropagation();event.preventDefault();openPhotoDownloadModal(${jsonAttr_(r)})'>📥</a>` : ''}
         </td>
