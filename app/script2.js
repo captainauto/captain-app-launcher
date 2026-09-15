@@ -2046,7 +2046,7 @@
     } else {
       body.innerHTML = unpaid.map(u => `
         <tr onclick='editRowInForm(${jsonAttr_(u)})' style="cursor:pointer;">
-          <td style="white-space:nowrap;">${escapeHtml_(dateWithDow_(u.date))}</td>${truncTd_(u.address||'', 190)}${truncTd_(u.content||'', 190)}<td style="background:#B7E1CD;">${escapeHtml_(u.agent||'')}</td>
+          <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml_(dateWithDow_(u.date))}</td>${truncTd_(u.address||'', 173)}${truncTd_(u.content||'', 173)}<td style="background:#B7E1CD;">${escapeHtml_(u.agent||'')}</td>
           <td>${escapeHtml_(u.source||'')}</td>
           <td style="white-space:nowrap;background:#EAD1DC;">${fmtMoney(u.amount)}</td><td>${payTypeShort_(u.payType)}</td>${truncTd_(u.note||'', 114)}
           <td><button class="btn-primary" style="padding:4px 10px;font-size:12px;" onclick="event.stopPropagation();doUnpaidDone(${u.rowIndex}, this)">완료</button></td>

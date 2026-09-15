@@ -672,9 +672,10 @@
           <div class="table-wrap" style="margin-top:8px;">
             <table style="table-layout:fixed;">
               <thead><tr>
-                <th style="width:76px;white-space:nowrap;">날짜</th>
-                <th style="width:190px;">주소</th>
-                <th style="width:190px;">내용</th>
+                <!-- 날짜에 요일이 붙어(V55.7) '2026-09-08 (월)'이 76px을 넘쳐 주소 칸을 덮었다 — 날짜를 넓히고 주소·내용에서 덜어 표 전체 폭은 그대로 -->
+                <th style="width:110px;white-space:nowrap;">날짜</th>
+                <th style="width:173px;">주소</th>
+                <th style="width:173px;">내용</th>
                 <th style="width:60px;">출장자</th>
                 <th style="width:60px;">출처</th>
                 <th style="width:76px;white-space:nowrap;">금액</th>
@@ -2045,9 +2046,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V55.7"></script>
-<script src="script2.js?v=V55.7"></script>
-<script src="script3.js?v=V55.7"></script>
+<script src="script1.js?v=V55.8"></script>
+<script src="script2.js?v=V55.8"></script>
+<script src="script3.js?v=V55.8"></script>
 </body>
 </html>
 
