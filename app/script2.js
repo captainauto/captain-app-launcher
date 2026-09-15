@@ -433,7 +433,7 @@
     if (tab === 'vehicle') loadVehicleTab();
     if (tab === 'docs') loadDocsManageTab();
     if (tab === 'expense') loadExpenseTab();
-    if (tab === 'blogreq') loadBlogRequests();
+    if (tab === 'blogreq') { loadBlogCandidates(); loadBlogRequests(); }
     if (tab === 'changelog') renderChangelogTab();
     if (tab === 'cal') {
       const sd = document.getElementById('sortDate');
@@ -2261,7 +2261,7 @@
       return;
     }
     // 대기 → 원고완료 → 발행완료 (2026-09-16 블로그 흐름 통일). 옛 "완료"는 서버가 발행완료+legacy로 준다.
-    const BADGE_COLOR = { '대기': '#2563eb', '원고완료': '#f59e0b', '발행완료': '#16a34a' };
+    const BADGE_COLOR = { '대기': '#2563eb', '원고완료': '#f59e0b', '발행완료': '#16a34a', '제외': '#64748b' };
     const badge = function (r) {
       const text = r.legacy ? '완료(예전)' : r.status;
       return '<span style="background:' + (BADGE_COLOR[r.status] || '#64748b') + ';color:#fff;padding:1px 8px;border-radius:10px;font-size:11px;">' + escapeHtml_(text) + '</span>';
@@ -2273,7 +2273,7 @@
     const linkBtn = function (r, kind, label) { return btn('btn-outline', label, 'openBlogReqLink(' + r.rowIndex + ",'" + kind + "')"); };
     el.innerHTML = blogReqCache_.map(function (r) {
       const actions = [];
-      if (r.status !== '발행완료') {
+      if (r.status === '대기' || r.status === '원고완료') {
         actions.push(r.folderUrl ? linkBtn(r, 'folder', '📁 사진 폴더') : '<span class="muted" style="font-size:12px;align-self:center;">📁 사진 없음</span>');
       }
       if (r.draftUrl) actions.push(linkBtn(r, 'draft', '📄 원고'));
@@ -2282,6 +2282,8 @@
       } else if (r.status === '원고완료') {
         actions.push(btn('btn-primary', '✅ 발행함', 'openBlogPublishInput(' + r.rowIndex + ')'));
         actions.push(btn('btn-outline', '↩ 대기로', 'markBlogReqStatus(' + r.rowIndex + ",'대기')"));
+      } else if (r.status === '제외') {
+        actions.push(btn('btn-outline', '↩ 다시 후보로', 'restoreBlogCandidate(' + r.rowIndex + ')'));
       } else {
         if (r.publishedUrl) actions.push(linkBtn(r, 'published', '🔗 네이버 글'));
         actions.push(btn('btn-outline', '↩ 발행 전으로', 'markBlogReqStatus(' + r.rowIndex + ",'원고완료')"));
@@ -2300,9 +2302,10 @@
         (r.titlePhrase ? '<div style="font-size:12px;"><span class="muted">제목문구:</span> ' + escapeHtml_(r.titlePhrase) + '</div>' : '') +
         '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">' + actions.join('') + '</div>' +
         // 발행 주소 입력줄 — .hidden 클래스는 인라인 display:flex에 지므로 style.display로 직접 켜고 끈다
-        '<div id="blogPub_' + r.rowIndex + '" style="margin-top:6px;gap:6px;align-items:center;display:none;">' +
+        '<div id="blogPub_' + r.rowIndex + '" style="margin-top:6px;gap:6px;align-items:center;flex-wrap:wrap;display:none;">' +
           '<input id="blogPubUrl_' + r.rowIndex + '" placeholder="네이버 글 주소 (없으면 비워두세요)" style="flex:1;min-width:0;">' +
           btn('btn-primary', '저장', 'saveBlogPublished(' + r.rowIndex + ')') +
+          '<div style="flex-basis:100%;font-size:11px;color:#dc2626;">저장하면 이 건의 현장 사진·영상이 전부 휴지통으로 갑니다(30일 안에는 드라이브 휴지통에서 복구). 쇼츠·홈페이지에 쓸 사진은 먼저 받아두세요.</div>' +
         '</div>' +
       '</div>';
     }).join('');
@@ -2354,9 +2357,139 @@
     item.publishedUrl = url;
     renderBlogRequests_();
     RUN()
-      .withSuccessHandler(function () { toast('발행완료로 표시했습니다'); })
+      .withSuccessHandler(function (res) {
+        let msg = '발행완료로 표시했습니다';
+        if (res && res.trashed) msg += ' · 사진·영상 ' + res.trashed + '개 휴지통으로';
+        if (res && res.failed) msg += ' · ' + res.failed + '개는 못 지웠습니다(직원 계정 파일)';
+        if (res && res.skipped) msg += ' · ' + res.skipped;
+        toast(msg);
+      })
       .withFailureHandler(function (e) { toast('오류: ' + e.message); loadBlogRequests(); })
       .setBlogRequestPublished(rowIndex, url);
+  }
+
+  // ---------- 사진 있는 현장 → 블로그 후보 (2026-09-16) ----------
+  // 사진·영상이 등록된 장부 건이 자동으로 뜬다. "✍️ 쓸게요(대기)" / "🚫 제외"를 정하면 요청 시트에 줄이 생겨 후보에서 빠진다.
+  // 장부검색으로 사진 있는 건을 찾아다니는 수고를 없애려는 것(사장님 요청).
+  // 미리보기 사진은 서버가 한 장씩 받아와 장당 0.5초쯤 걸리므로 "🖼 사진 보기"를 누른 건만 불러온다.
+  let blogCandAll_ = [];
+  let blogCandShown_ = 20;
+
+  function loadBlogCandidates() {
+    const el = document.getElementById('blogCandList');
+    if (!el) return;
+    el.innerHTML = '<span class="muted">사진 있는 현장을 찾는 중...</span>';
+    RUN()
+      .withSuccessHandler(function (list) {
+        blogCandAll_ = Array.isArray(list) ? list : [];
+        blogCandShown_ = 20;
+        renderBlogCandidates_();
+      })
+      .withFailureHandler(function (e) { el.innerHTML = '<span class="muted">오류: ' + escapeHtml_(e.message) + '</span>'; })
+      .getBlogCandidates();
+  }
+
+  function renderBlogCandidates_() {
+    const el = document.getElementById('blogCandList');
+    const cnt = document.getElementById('blogCandCount');
+    if (!el) return;
+    if (cnt) cnt.textContent = blogCandAll_.length ? '(' + blogCandAll_.length + '건)' : '';
+    if (!blogCandAll_.length) {
+      el.innerHTML = '<span class="muted">새로 정할 현장이 없습니다.</span>';
+      return;
+    }
+    const btn = function (cls, label, onclick) {
+      return '<button class="' + cls + '" style="padding:3px 10px;font-size:12px;flex:0 0 auto;" onclick="' + onclick + '">' + label + '</button>';
+    };
+    const html = blogCandAll_.slice(0, blogCandShown_).map(function (c) {
+      return '<div style="padding:8px 0;border-top:1px solid var(--border);">' +
+        '<div style="font-size:13px;"><strong>' + escapeHtml_(c.date + ' ' + c.address) + '</strong> ' +
+          '<span class="muted" style="font-size:11px;">📷 ' + c.photoCount + (c.videoCount ? ' · 🎬 ' + c.videoCount : '') + '</span></div>' +
+        '<div style="font-size:12px;margin-top:2px;">' + escapeHtml_(c.content) + '</div>' +
+        '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">' +
+          btn('btn-outline', '🖼 사진 보기', 'toggleBlogCandPhotos(' + c.ledgerRow + ')') +
+          btn('btn-primary', '✍️ 쓸게요', 'decideBlogCandidate(' + c.ledgerRow + ",'write')") +
+          btn('btn-outline', '🚫 제외', 'decideBlogCandidate(' + c.ledgerRow + ",'exclude')") +
+        '</div>' +
+        '<div id="blogCandPhotos_' + c.ledgerRow + '" style="display:none;margin-top:6px;gap:4px;flex-wrap:wrap;"></div>' +
+      '</div>';
+    }).join('');
+    const left = blogCandAll_.length - blogCandShown_;
+    el.innerHTML = html + (left > 0
+      ? '<button class="btn-outline" style="margin-top:8px;" onclick="showMoreBlogCandidates()">더 보기 (' + left + '건 남음)</button>'
+      : '');
+  }
+
+  function showMoreBlogCandidates() {
+    blogCandShown_ += 20;
+    renderBlogCandidates_();
+  }
+
+  function toggleBlogCandPhotos(ledgerRow) {
+    const box = document.getElementById('blogCandPhotos_' + ledgerRow);
+    if (!box) return;
+    if (box.style.display === 'flex') { box.style.display = 'none'; return; }
+    box.style.display = 'flex';
+    if (box.dataset.loaded) return;
+    box.innerHTML = '<span class="muted" style="font-size:12px;">사진 불러오는 중... (장수가 많으면 몇 초 걸립니다)</span>';
+    RUN()
+      .withSuccessHandler(function (items) {
+        items = Array.isArray(items) ? items : [];
+        box.dataset.loaded = '1';
+        if (!items.length) { box.innerHTML = '<span class="muted" style="font-size:12px;">사진이 없습니다.</span>'; return; }
+        box.innerHTML = items.map(function (m) {
+          const inner = (m.kind === 'photo' && m.thumb)
+            ? '<img src="' + m.thumb + '" style="width:88px;height:88px;object-fit:cover;border-radius:6px;display:block;">'
+            : '<span style="display:flex;align-items:center;justify-content:center;width:88px;height:88px;border-radius:6px;background:var(--border);font-size:12px;">' + (m.kind === 'video' ? '🎬 영상' : '📷') + '</span>';
+          return '<a href="' + escapeHtml_(m.viewUrl) + '" target="_blank" rel="noopener">' + inner + '</a>';
+        }).join('');
+      })
+      .withFailureHandler(function (e) { box.innerHTML = '<span class="muted" style="font-size:12px;">오류: ' + escapeHtml_(e.message) + '</span>'; })
+      .getFieldMediaList(ledgerRow);
+  }
+
+  /** 쓸게요 → 대기로 요청 목록에, 제외 → 제외로 기록. 화면에서 먼저 빼고 저장은 뒤에서 한다 */
+  function decideBlogCandidate(ledgerRow, kind) {
+    const idx = blogCandAll_.findIndex(function (c) { return c.ledgerRow === ledgerRow; });
+    if (idx === -1) return;
+    blogCandAll_.splice(idx, 1);
+    renderBlogCandidates_();
+    const run = RUN()
+      .withSuccessHandler(function () {
+        toast(kind === 'write' ? '요청 목록에 대기로 넣었습니다' : '제외했습니다');
+        loadBlogRequests();
+      })
+      .withFailureHandler(function (e) { toast('오류: ' + e.message); loadBlogCandidates(); });
+    if (kind === 'write') run.requestBlogPost(ledgerRow, '', '');
+    else run.excludeBlogCandidate(ledgerRow);
+  }
+
+  /** 제외했던 건을 후보로 되돌린다 — 요청 줄을 지우면 후보 목록에 다시 뜬다 */
+  function restoreBlogCandidate(rowIndex) {
+    RUN()
+      .withSuccessHandler(function () { toast('후보 목록으로 되돌렸습니다'); loadBlogRequests(); loadBlogCandidates(); })
+      .withFailureHandler(function (e) { toast('오류: ' + e.message); })
+      .deleteBlogRequests([rowIndex]);
+  }
+
+  /** V55.11~12 때 가져오고 "_가져옴_"만 붙어 남은 폴더 정리 — 서버가 파일 대조 후 확인된 폴더만 휴지통으로 보낸다 */
+  function cleanupImportedFolders(btn) {
+    const el = document.getElementById('importedCleanupResult');
+    if (!el) return;
+    btn.disabled = true;
+    el.innerHTML = '예전에 가져온 폴더를 사진 폴더와 대조하는 중... (1분쯤 걸릴 수 있습니다)';
+    RUN()
+      .withSuccessHandler(function (res) {
+        btn.disabled = false;
+        const rs = (res && res.results) || [];
+        if (!rs.length) { el.innerHTML = '정리할 _가져옴_ 폴더가 없습니다.'; return; }
+        const ok = rs.filter(function (r) { return r.ok; });
+        const bad = rs.filter(function (r) { return !r.ok; });
+        el.innerHTML = '휴지통으로 보냄: ' + ok.length + '개' +
+          (bad.length ? '<div style="color:#dc2626;">남겨둠 ' + bad.length + '개 (확인 필요):<br>' + bad.map(function (r) { return escapeHtml_(r.name + ' — ' + r.error); }).join('<br>') + '</div>' : '');
+      })
+      .withFailureHandler(function (e) { btn.disabled = false; el.innerHTML = '오류: ' + escapeHtml_(e.message); })
+      .cleanupImportedSortedFolders();
   }
 
   // ---------- 정리완료 사진 가져오기 (2026-09-16) ----------
@@ -2430,7 +2563,8 @@
         const copied = ok.reduce(function (s, r) { return s + r.copied; }, 0);
         prog.innerHTML = '끝났습니다 — 폴더 ' + ok.length + '개, 파일 ' + copied + '개 복사' +
           (bad.length ? '<div style="color:#dc2626;">실패 ' + bad.length + '개:<br>' + bad.map(function (r) { return escapeHtml_(r.name + ' — ' + r.error); }).join('<br>') + '</div>' : '') +
-          '<div>표를 다시 보면 남은 폴더만 나옵니다.</div>';
+          '<div>다 옮긴 원본 폴더는 휴지통으로 보냈습니다. 옮긴 현장은 위 "📷 사진 있는 현장"에 뜹니다.</div>';
+        loadBlogCandidates();
         return;
       }
       const batch = names.splice(0, sortedImportBatch_);
