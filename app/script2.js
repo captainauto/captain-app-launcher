@@ -428,7 +428,8 @@
     if (tab === 'incentive') { loadIncentive(); loadMonthlySettlement(); }
     if (tab === 'stats') { loadStatistics(); loadPnL(); }
     if (tab === 'album') initAlbumTab();
-    if (tab === 'users') { loadNotifyUsers_(); loadNaverLinkStatus(); loadGeminiKeyStatus(); loadOpenAiKeyStatus(); }
+    // 네이버 연동·Gemini/OpenAI 키 상태 조회는 그 카드들을 뺀 2026-09-16부터 부르지 않는다(블로그 흐름 통일)
+    if (tab === 'users') { loadNotifyUsers_(); }
     if (tab === 'vehicle') loadVehicleTab();
     if (tab === 'docs') loadDocsManageTab();
     if (tab === 'expense') loadExpenseTab();
@@ -2255,56 +2256,194 @@
     const el = document.getElementById('blogReqList');
     if (!el) return;
     if (!blogReqCache_.length) {
-      el.innerHTML = '<span class="muted">대기 중인 블로그 작성 요청이 없습니다.</span>';
+      el.innerHTML = '<span class="muted">남은 블로그 요청이 없습니다.</span>';
       updateBlogReqBulkBar_(); // 마지막 건까지 지웠으면 선택 삭제 줄도 같이 감춘다
       return;
     }
-    const badge = function (s) {
-      // 자동생성 건은 "완료(자동)"이라 정확히 비교하면 안 된다.
-      const color = s.indexOf('완료') === 0 ? '#16a34a' : (s === '작성중' ? '#f59e0b' : '#2563eb');
-      return '<span style="background:' + color + ';color:#fff;padding:1px 8px;border-radius:10px;font-size:11px;">' + escapeHtml_(s) + '</span>';
+    // 대기 → 원고완료 → 발행완료 (2026-09-16 블로그 흐름 통일). 옛 "완료"는 서버가 발행완료+legacy로 준다.
+    const BADGE_COLOR = { '대기': '#2563eb', '원고완료': '#f59e0b', '발행완료': '#16a34a' };
+    const badge = function (r) {
+      const text = r.legacy ? '완료(예전)' : r.status;
+      return '<span style="background:' + (BADGE_COLOR[r.status] || '#64748b') + ';color:#fff;padding:1px 8px;border-radius:10px;font-size:11px;">' + escapeHtml_(text) + '</span>';
     };
+    const btn = function (cls, label, onclick) {
+      return '<button class="' + cls + '" style="padding:3px 10px;font-size:12px;flex:0 0 auto;" onclick="' + onclick + '">' + label + '</button>';
+    };
+    // 주소를 onclick 속성에 직접 넣으면 따옴표 이스케이프가 꼬인다 — 캐시에서 꺼내 여는 함수로 넘긴다
+    const linkBtn = function (r, kind, label) { return btn('btn-outline', label, 'openBlogReqLink(' + r.rowIndex + ",'" + kind + "')"); };
     el.innerHTML = blogReqCache_.map(function (r) {
-      const done = r.status.indexOf('완료') === 0;
+      const actions = [];
+      if (r.status !== '발행완료') {
+        actions.push(r.folderUrl ? linkBtn(r, 'folder', '📁 사진 폴더') : '<span class="muted" style="font-size:12px;align-self:center;">📁 사진 없음</span>');
+      }
+      if (r.draftUrl) actions.push(linkBtn(r, 'draft', '📄 원고'));
+      if (r.status === '대기') {
+        actions.push(btn('btn-outline', '📝 원고 다 씀', 'markBlogReqStatus(' + r.rowIndex + ",'원고완료')"));
+      } else if (r.status === '원고완료') {
+        actions.push(btn('btn-primary', '✅ 발행함', 'openBlogPublishInput(' + r.rowIndex + ')'));
+        actions.push(btn('btn-outline', '↩ 대기로', 'markBlogReqStatus(' + r.rowIndex + ",'대기')"));
+      } else {
+        if (r.publishedUrl) actions.push(linkBtn(r, 'published', '🔗 네이버 글'));
+        actions.push(btn('btn-outline', '↩ 발행 전으로', 'markBlogReqStatus(' + r.rowIndex + ",'원고완료')"));
+      }
       return '<div class="card" style="padding:10px;margin-bottom:8px;">' +
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
           '<input type="checkbox" onchange="onBlogReqCheck(' + r.rowIndex + ', this.checked)"' +
             (blogReqSelected_[r.rowIndex] ? ' checked' : '') +
             ' style="width:auto;height:auto;padding:0;border:none;background:none;border-radius:0;margin:0;flex:0 0 auto;">' +
-          badge(r.status) +
+          badge(r) +
           '<strong style="font-size:13px;">' + escapeHtml_(r.date) + ' ' + escapeHtml_(r.address) + '</strong>' +
           '<span class="muted" style="font-size:11px;">요청 ' + escapeHtml_(r.requestedAt) + (r.requester ? ' · ' + escapeHtml_(r.requester) : '') + '</span>' +
         '</div>' +
         '<div style="margin-top:4px;font-size:12px;">' + escapeHtml_(r.content) + '</div>' +
         (r.keywords ? '<div style="margin-top:2px;font-size:12px;"><span class="muted">키워드:</span> ' + escapeHtml_(r.keywords) + '</div>' : '') +
         (r.titlePhrase ? '<div style="font-size:12px;"><span class="muted">제목문구:</span> ' + escapeHtml_(r.titlePhrase) + '</div>' : '') +
-        '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">' +
-          (done
-            ? '<button class="btn-outline" style="padding:3px 10px;font-size:12px;" onclick="toggleBlogReqDone(' + r.rowIndex + ')">↩ 아직 안 씀으로</button>'
-            : '<button class="btn-primary" style="padding:3px 10px;font-size:12px;" onclick="toggleBlogReqDone(' + r.rowIndex + ')">✅ 다 썼음</button>') +
+        '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">' + actions.join('') + '</div>' +
+        // 발행 주소 입력줄 — .hidden 클래스는 인라인 display:flex에 지므로 style.display로 직접 켜고 끈다
+        '<div id="blogPub_' + r.rowIndex + '" style="margin-top:6px;gap:6px;align-items:center;display:none;">' +
+          '<input id="blogPubUrl_' + r.rowIndex + '" placeholder="네이버 글 주소 (없으면 비워두세요)" style="flex:1;min-width:0;">' +
+          btn('btn-primary', '저장', 'saveBlogPublished(' + r.rowIndex + ')') +
         '</div>' +
       '</div>';
     }).join('');
     updateBlogReqBulkBar_();
   }
 
+  function findBlogReq_(rowIndex) {
+    return blogReqCache_.find(function (r) { return r.rowIndex === rowIndex; });
+  }
+
+  function openBlogReqLink(rowIndex, kind) {
+    const item = findBlogReq_(rowIndex);
+    const url = item && ({ folder: item.folderUrl, draft: item.draftUrl, published: item.publishedUrl })[kind];
+    if (url) window.open(url, '_blank');
+  }
+
   /**
-   * 상태를 "대기 ↔ 완료"로 뒤집는다.
-   * 예전엔 대기/작성중/완료 세 버튼이었는데, 혼자 쓰는 큐라 "작성중"이 하는 일이 없었다 —
-   * 필요한 건 "썼나 / 안 썼나"뿐이라 토글 하나로 줄였다(2026-08-03, 사장님 지적).
-   * 옛 데이터에 '작성중'으로 남아 있는 행은 완료가 아니므로 미완료로 보이고, 누르면 완료가 된다.
+   * 상태 바꾸기 — 화면에서 먼저 바꾸고 저장은 뒤에서(응답 약 1.7초를 기다리면 눌러도 반응이 없어 보인다).
+   * 원고완료는 보통 원고 문서가 사진 폴더에 들어오면 목록을 열 때 서버가 자동으로 바꾼다.
+   * "📝 원고 다 씀"은 자동 감지가 놓친 경우(원고를 다른 곳에 둔 경우 등)를 위한 수동 버튼이다.
    */
-  function toggleBlogReqDone(rowIndex) {
-    const item = blogReqCache_.find(function (r) { return r.rowIndex === rowIndex; });
+  function markBlogReqStatus(rowIndex, next) {
+    const item = findBlogReq_(rowIndex);
     if (!item) return;
-    const next = item.status.indexOf('완료') === 0 ? '대기' : '완료';
-    // 화면에서 먼저 바꾸고 저장은 뒤에서 — 응답(약 1.7초)을 기다리면 눌러도 반응이 없는 것처럼 보인다.
     item.status = next;
+    item.legacy = false;
     renderBlogRequests_();
     RUN()
-      .withSuccessHandler(function () { toast(next === '완료' ? '완료로 표시했습니다' : '다시 대기로 돌렸습니다'); })
+      .withSuccessHandler(function () { toast('"' + next + '"(으)로 바꿨습니다'); })
       .withFailureHandler(function (e) { toast('오류: ' + e.message); loadBlogRequests(); })
       .setBlogRequestStatus(rowIndex, next);
+  }
+
+  function openBlogPublishInput(rowIndex) {
+    const box = document.getElementById('blogPub_' + rowIndex);
+    if (!box) return;
+    const open = box.style.display !== 'flex';
+    box.style.display = open ? 'flex' : 'none';
+    if (open) document.getElementById('blogPubUrl_' + rowIndex).focus();
+  }
+
+  function saveBlogPublished(rowIndex) {
+    const item = findBlogReq_(rowIndex);
+    if (!item) return;
+    const input = document.getElementById('blogPubUrl_' + rowIndex);
+    const url = input ? input.value.trim() : '';
+    item.status = '발행완료';
+    item.legacy = false;
+    item.publishedUrl = url;
+    renderBlogRequests_();
+    RUN()
+      .withSuccessHandler(function () { toast('발행완료로 표시했습니다'); })
+      .withFailureHandler(function (e) { toast('오류: ' + e.message); loadBlogRequests(); })
+      .setBlogRequestPublished(rowIndex, url);
+  }
+
+  // ---------- 정리완료 사진 가져오기 (2026-09-16) ----------
+  // 코워크가 "캡틴 현장사진/_정리완료"에 분류한 폴더를 장부 건별 사진 폴더로 복사한다.
+  // 표 보기(시험 실행)는 아무것도 바꾸지 않는다. 경고가 붙은 줄은 기본으로 체크를 빼둔다.
+  let sortedImportItems_ = [];
+  let sortedImportBatch_ = 10;
+
+  function previewSortedImport(btn) {
+    const el = document.getElementById('sortedImportResult');
+    if (!el) return;
+    el.innerHTML = '<span class="muted">드라이브 폴더를 확인하는 중... (30초쯤 걸릴 수 있습니다)</span>';
+    if (btn) btn.disabled = true;
+    RUN()
+      .withSuccessHandler(function (res) {
+        if (btn) btn.disabled = false;
+        sortedImportItems_ = (res && res.items) || [];
+        sortedImportBatch_ = (res && res.batchSize) || 10;
+        renderSortedImport_();
+      })
+      .withFailureHandler(function (e) {
+        if (btn) btn.disabled = false;
+        el.innerHTML = '<span class="muted">오류: ' + escapeHtml_(e.message) + '</span>';
+      })
+      .previewSortedPhotoImport();
+  }
+
+  function renderSortedImport_() {
+    const el = document.getElementById('sortedImportResult');
+    if (!el) return;
+    if (!sortedImportItems_.length) {
+      el.innerHTML = '<span class="muted">가져올 폴더가 없습니다 (이미 전부 가져왔거나 _정리완료가 비어 있음).</span>';
+      return;
+    }
+    const cell = 'padding:4px 6px;font-size:12px;vertical-align:top;border-top:1px solid var(--border);';
+    const rows = sortedImportItems_.map(function (it, i) {
+      const warn = it.warnings.length ? '<div style="color:#dc2626;font-size:11px;">⚠️ ' + escapeHtml_(it.warnings.join(' · ')) + '</div>' : '';
+      return '<tr>' +
+        '<td style="' + cell + '"><input type="checkbox" class="sortedImportChk" data-idx="' + i + '"' + (it.warnings.length ? '' : ' checked') +
+          ' style="width:auto;height:auto;padding:0;border:none;background:none;border-radius:0;margin:0;"></td>' +
+        '<td style="' + cell + '">' + it.rowIndex + '</td>' +
+        '<td style="' + cell + '">' + escapeHtml_(it.folderDate + ' ' + it.label) + '<div class="muted" style="font-size:11px;">파일 ' + it.fileCount + '개</div></td>' +
+        '<td style="' + cell + '">' + escapeHtml_(it.ledgerDate + ' ' + it.ledgerAddress) + '<div class="muted" style="font-size:11px;">' + escapeHtml_(it.ledgerContent) + '</div>' + warn + '</td>' +
+      '</tr>';
+    }).join('');
+    const th = 'text-align:left;font-size:12px;padding:4px 6px;';
+    el.innerHTML =
+      '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">' +
+        '<thead><tr><th style="' + th + '"></th><th style="' + th + '">장부행</th><th style="' + th + '">정리된 폴더</th><th style="' + th + '">장부 기록</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody></table></div>' +
+      '<div class="muted" style="font-size:12px;margin-top:6px;">⚠️ 표시가 있는 줄은 체크를 빼뒀습니다. 장부와 같은 현장이 맞으면 체크하세요.</div>' +
+      '<button class="btn-primary" style="margin-top:8px;" onclick="applySortedImport(this)">체크한 폴더 가져오기</button>' +
+      '<div id="sortedImportProgress" class="muted" style="margin-top:8px;font-size:12px;"></div>';
+  }
+
+  /** 체크한 폴더를 서버 한도(한 번에 sortedImportBatch_개)씩 끊어서 차례로 보낸다 */
+  function applySortedImport(btn) {
+    const names = Array.prototype.slice.call(document.querySelectorAll('.sortedImportChk'))
+      .filter(function (c) { return c.checked; })
+      .map(function (c) { return sortedImportItems_[Number(c.dataset.idx)].name; });
+    if (!names.length) { toast('가져올 폴더를 체크하세요'); return; }
+    const prog = document.getElementById('sortedImportProgress');
+    const total = names.length;
+    const log = [];
+    btn.disabled = true;
+    const step = function () {
+      if (!names.length) {
+        btn.disabled = false;
+        const ok = log.filter(function (r) { return r.ok; });
+        const bad = log.filter(function (r) { return !r.ok; });
+        const copied = ok.reduce(function (s, r) { return s + r.copied; }, 0);
+        prog.innerHTML = '끝났습니다 — 폴더 ' + ok.length + '개, 파일 ' + copied + '개 복사' +
+          (bad.length ? '<div style="color:#dc2626;">실패 ' + bad.length + '개:<br>' + bad.map(function (r) { return escapeHtml_(r.name + ' — ' + r.error); }).join('<br>') + '</div>' : '') +
+          '<div>표를 다시 보면 남은 폴더만 나옵니다.</div>';
+        return;
+      }
+      const batch = names.splice(0, sortedImportBatch_);
+      prog.textContent = '가져오는 중... ' + log.length + ' / ' + total;
+      RUN()
+        .withSuccessHandler(function (res) { ((res && res.results) || []).forEach(function (r) { log.push(r); }); step(); })
+        .withFailureHandler(function (e) {
+          btn.disabled = false;
+          prog.innerHTML = '<span style="color:#dc2626;">오류로 멈췄습니다 (' + log.length + ' / ' + total + '까지 처리): ' + escapeHtml_(e.message) + '</span> — 표를 다시 보면 남은 폴더만 나옵니다.';
+        })
+        .applySortedPhotoImport(batch);
+    };
+    step();
   }
 
   // ---------- 체크박스 선택 삭제 ----------
