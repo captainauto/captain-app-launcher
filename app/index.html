@@ -574,6 +574,9 @@
             <option value="인천">인천지점</option>
             <option value="남양주">남양주지점</option>
           </select>
+          <!-- 교육자료: 관리자 화면(본사·지점 관리자 = 점주)에만 있다. 구글 드라이브 점주용 PDF(링크 있는 사람 누구나 보기)를 연다.
+               내용을 고치면 15_교육자료의 드라이브올리기.js가 같은 파일 ID에 덮어쓰므로 이 링크는 바꿀 필요 없다. -->
+          <button class="btn-outline" onclick="window.open('https://drive.google.com/file/d/1kFBzYiFuOSNUBOFr4TPOksW4Lm2QvfMN/view', '_blank')" title="캡틴자동문 교육자료 (점주용 전체 PDF)">📘 교육자료</button>
             <button class="btn-primary" onclick="completeIntegratedLedger()">작성완료</button>
           <button class="btn-outline" onclick="logout()">로그아웃</button>
         </div>
@@ -2046,9 +2049,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V55.8"></script>
-<script src="script2.js?v=V55.8"></script>
-<script src="script3.js?v=V55.8"></script>
+<script src="script1.js?v=V55.9"></script>
+<script src="script2.js?v=V55.9"></script>
+<script src="script3.js?v=V55.9"></script>
 </body>
 </html>
 
