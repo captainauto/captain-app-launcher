@@ -2298,6 +2298,7 @@
           '<span class="muted" style="font-size:11px;">요청 ' + escapeHtml_(r.requestedAt) + (r.requester ? ' · ' + escapeHtml_(r.requester) : '') + '</span>' +
         '</div>' +
         '<div style="margin-top:4px;font-size:12px;">' + escapeHtml_(r.content) + '</div>' +
+        (r.finalTitle ? '<div style="margin-top:2px;font-size:12px;"><span class="muted">제목:</span> ' + escapeHtml_(r.finalTitle) + '</div>' : '') +
         (r.keywords ? '<div style="margin-top:2px;font-size:12px;"><span class="muted">키워드:</span> ' + escapeHtml_(r.keywords) + '</div>' : '') +
         (r.titlePhrase ? '<div style="font-size:12px;"><span class="muted">제목문구:</span> ' + escapeHtml_(r.titlePhrase) + '</div>' : '') +
         '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">' + actions.join('') + '</div>' +
@@ -2406,6 +2407,16 @@
         '<div style="font-size:13px;"><strong>' + escapeHtml_(c.date + ' ' + c.address) + '</strong> ' +
           '<span class="muted" style="font-size:11px;">📷 ' + c.photoCount + (c.videoCount ? ' · 🎬 ' + c.videoCount : '') + '</span></div>' +
         '<div style="font-size:12px;margin-top:2px;">' + escapeHtml_(c.content) + '</div>' +
+        // 제목 후보는 자동 실행(Claude)이 사진을 보고 만들어 사진 폴더에 문서로 넣어둔 것이다(2026-09-16)
+        ((c.titles && c.titles.length)
+          ? '<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">' +
+              '<span class="muted" style="font-size:11px;">제목을 고르면 그 제목으로 대기에 들어갑니다</span>' +
+              c.titles.map(function (t, i) {
+                return '<button class="btn-outline" style="text-align:left;padding:6px 10px;font-size:12px;" onclick="pickCandidateTitle(' + c.ledgerRow + ',' + i + ')">' +
+                  (i + 1) + '. ' + escapeHtml_(t) + '</button>';
+              }).join('') +
+            '</div>'
+          : '<div class="muted" style="margin-top:6px;font-size:11px;">제목 후보 준비 중 — 자동 실행(07·12·17·22시)이 사진을 보고 만들어 둡니다.</div>') +
         '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">' +
           btn('btn-outline', '🖼 사진 보기', 'toggleBlogCandPhotos(' + c.ledgerRow + ')') +
           btn('btn-primary', '✍️ 쓸게요', 'decideBlogCandidate(' + c.ledgerRow + ",'write')") +
@@ -2446,6 +2457,19 @@
       })
       .withFailureHandler(function (e) { box.innerHTML = '<span class="muted" style="font-size:12px;">오류: ' + escapeHtml_(e.message) + '</span>'; })
       .getFieldMediaList(ledgerRow);
+  }
+
+  /** 제목 후보 중 하나를 고르면 그 제목으로 대기에 넣는다(자동 실행이 이 제목으로 본문을 쓴다) */
+  function pickCandidateTitle(ledgerRow, idx) {
+    const item = blogCandAll_.find(function (c) { return c.ledgerRow === ledgerRow; });
+    const title = item && item.titles && item.titles[idx];
+    if (!title) return;
+    blogCandAll_ = blogCandAll_.filter(function (c) { return c.ledgerRow !== ledgerRow; });
+    renderBlogCandidates_();
+    RUN()
+      .withSuccessHandler(function () { toast('"' + title.slice(0, 20) + '…" 제목으로 대기에 넣었습니다'); loadBlogRequests(); })
+      .withFailureHandler(function (e) { toast('오류: ' + e.message); loadBlogCandidates(); })
+      .pickBlogCandidateTitle(ledgerRow, title);
   }
 
   /** 쓸게요 → 대기로 요청 목록에, 제외 → 제외로 기록. 화면에서 먼저 빼고 저장은 뒤에서 한다 */
@@ -3130,6 +3154,31 @@
       })
       .withFailureHandler(function (e) { toast('오류: ' + e.message); })
       .deleteDoorlockCatalogItem(rowIndex);
+  }
+
+  // V53.18 출장스케쥴 삭제 때 이 함수가 같이 지워져서 도어락 사진 업로드가 "업로드 중..."에서 멈췄었다(V55.14 복구).
+  function compressImageToBase64_(file, maxWidth, quality, onDone, onError) {
+    const reader = new FileReader();
+    reader.onerror = function () { onError('파일을 읽을 수 없습니다'); };
+    reader.onload = function () {
+      const img = new Image();
+      img.onerror = function () { onError('이미지를 열 수 없습니다'); };
+      img.onload = function () {
+        let w = img.width, h = img.height;
+        if (w > maxWidth) { h = Math.round(h * (maxWidth / w)); w = maxWidth; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const isPng = /png/i.test(file.type);
+        const dataUrl = isPng ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', quality);
+        onDone({
+          base64: dataUrl.split(',')[1], mimeType: isPng ? 'image/png' : 'image/jpeg',
+          fileName: (file.name || 'photo').replace(/\.[^.]+$/, '') + (isPng ? '.png' : '.jpg')
+        });
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
   }
 
   function handleDoorlockImageUpload(inputEl) {
