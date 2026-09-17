@@ -2320,7 +2320,23 @@
   function openBlogReqLink(rowIndex, kind) {
     const item = findBlogReq_(rowIndex);
     const url = item && ({ folder: item.folderUrl, draft: item.draftUrl, published: item.publishedUrl })[kind];
-    if (url) window.open(url, '_blank');
+    if (!url) return;
+    if (kind === 'published' || !item.ledgerRow) { window.open(url, '_blank'); return; }
+    // 사진 폴더·원고는 사장님 드라이브라 가맹점 계정으로는 안 열린다 — 서버가 링크 공유를 켠 뒤 연다.
+    // 응답을 기다렸다 열면 팝업 차단에 막히므로 빈 창부터 띄워둔다(openFieldMediaFolder와 같은 방식)
+    const tab = window.open('', '_blank');
+    RUN()
+      .withSuccessHandler(function (r) {
+        const target = (r && r.url) || url;
+        if (tab) tab.location.href = target;
+        else window.open(target, '_blank');
+      })
+      .withFailureHandler(function (e) {
+        // 공유 설정에 실패해도 주인(사장님)은 열 수 있으니 원래 주소로라도 연다
+        if (tab) tab.location.href = url;
+        toast('공유 설정 실패(본사 계정이 아니면 안 열릴 수 있음): ' + e.message);
+      })
+      .openBlogReqSharedLink(item.ledgerRow, kind);
   }
 
   /**
