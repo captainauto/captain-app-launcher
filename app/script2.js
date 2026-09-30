@@ -2398,6 +2398,7 @@
         '</div>' +
         '<div style="margin-top:4px;font-size:12px;">' + escapeHtml_(r.content) + '</div>' +
         (r.finalTitle ? '<div style="margin-top:2px;font-size:12px;"><span class="muted">제목:</span> ' + escapeHtml_(r.finalTitle) + '</div>' : '') +
+        (r.note ? '<div style="margin-top:2px;font-size:12px;"><span class="muted">📝 참고:</span> ' + escapeHtml_(r.note) + '</div>' : '') +
         (r.keywords ? '<div style="margin-top:2px;font-size:12px;"><span class="muted">키워드:</span> ' + escapeHtml_(r.keywords) + '</div>' : '') +
         (r.titlePhrase ? '<div style="font-size:12px;"><span class="muted">제목문구:</span> ' + escapeHtml_(r.titlePhrase) + '</div>' : '') +
         '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">' + actions.join('') + '</div>' +
@@ -2531,6 +2532,16 @@
                 return '<button class="btn-outline" style="text-align:left;padding:6px 10px;font-size:12px;" onclick="pickCandidateTitle(' + c.ledgerRow + ',' + i + ')">' +
                   (i + 1) + '. ' + escapeHtml_(t) + '</button>';
               }).join('') +
+              // 6번 = 직접 정하기. 후보를 조합하거나 아예 새로 쓰고 싶을 때(2026-09-30 사장님 요청)
+              '<button class="btn-outline" style="text-align:left;padding:6px 10px;font-size:12px;" onclick="toggleOwnTitle(' + c.ledgerRow + ')">' +
+                (c.titles.length + 1) + '. ✏️ 직접 정하기 — 후보를 조합하거나 새로 쓰기</button>' +
+              '<div id="blogCandOwn_' + c.ledgerRow + '" style="display:none;gap:4px;flex-direction:column;margin-top:2px;">' +
+                '<input id="blogCandOwnTitle_' + c.ledgerRow + '" placeholder="쓰실 제목을 적어주세요" style="font-size:12px;" />' +
+                '<button class="btn-primary" style="padding:6px 10px;font-size:12px;" onclick="pickOwnTitle(' + c.ledgerRow + ')">이 제목으로 대기에 넣기</button>' +
+              '</div>' +
+              // 어느 제목을 고르든 이 메모가 같이 넘어간다 — 원고 쓸 때 반드시 반영된다
+              '<label class="muted" style="font-size:11px;margin-top:4px;">📝 참고사항 (선택) — 꼭 넣고 싶은 내용·키워드</label>' +
+              '<textarea id="blogCandNote_' + c.ledgerRow + '" rows="2" placeholder="예: 에이치바는 국산으로 교체했다는 점 꼭 넣어주세요 / 키워드 &quot;강화도어 처짐&quot;" style="font-size:12px;width:100%;box-sizing:border-box;"></textarea>' +
             '</div>'
           : '<div class="muted" style="margin-top:6px;font-size:11px;">제목 후보 준비 중 — 자동 실행(07·12·17·22시)이 사진을 보고 만들어 둡니다.</div>') +
         '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">' +
@@ -2575,17 +2586,47 @@
       .getFieldMediaList(ledgerRow);
   }
 
+  /** 6번 "직접 정하기" 입력칸 열고 닫기(2026-09-30) */
+  function toggleOwnTitle(ledgerRow) {
+    const box = document.getElementById('blogCandOwn_' + ledgerRow);
+    if (!box) return;
+    const open = box.style.display !== 'flex';
+    box.style.display = open ? 'flex' : 'none';
+    if (open) {
+      const input = document.getElementById('blogCandOwnTitle_' + ledgerRow);
+      if (input) input.focus();
+    }
+  }
+
+  /** 직접 적은 제목으로 대기에 넣는다 */
+  function pickOwnTitle(ledgerRow) {
+    const input = document.getElementById('blogCandOwnTitle_' + ledgerRow);
+    const title = input ? input.value.trim() : '';
+    if (!title) { toast('제목을 적어주세요'); if (input) input.focus(); return; }
+    sendCandidateTitle_(ledgerRow, title);
+  }
+
   /** 제목 후보 중 하나를 고르면 그 제목으로 대기에 넣는다(자동 실행이 이 제목으로 본문을 쓴다) */
   function pickCandidateTitle(ledgerRow, idx) {
     const item = blogCandAll_.find(function (c) { return c.ledgerRow === ledgerRow; });
     const title = item && item.titles && item.titles[idx];
     if (!title) return;
+    sendCandidateTitle_(ledgerRow, title);
+  }
+
+  /** 후보에서 골랐든 직접 적었든 여기로 모인다 — 참고메모도 같이 넘긴다(2026-09-30) */
+  function sendCandidateTitle_(ledgerRow, title) {
+    const noteEl = document.getElementById('blogCandNote_' + ledgerRow);
+    const note = noteEl ? noteEl.value.trim() : '';
     blogCandAll_ = blogCandAll_.filter(function (c) { return c.ledgerRow !== ledgerRow; });
     renderBlogCandidates_();
     RUN()
-      .withSuccessHandler(function () { toast('"' + title.slice(0, 20) + '…" 제목으로 대기에 넣었습니다'); loadBlogRequests(); })
+      .withSuccessHandler(function () {
+        toast('"' + title.slice(0, 20) + '…" 제목으로 대기에 넣었습니다' + (note ? ' (참고사항 함께 저장)' : ''));
+        loadBlogRequests();
+      })
       .withFailureHandler(function (e) { toast('오류: ' + e.message); loadBlogCandidates(); })
-      .pickBlogCandidateTitle(ledgerRow, title);
+      .pickBlogCandidateTitle(ledgerRow, title, note);
   }
 
   /** 쓸게요 → 대기로 요청 목록에, 제외 → 제외로 기록. 화면에서 먼저 빼고 저장은 뒤에서 한다 */
