@@ -17,7 +17,7 @@
 
   // 화면에 보이는 버전 배지(V53.x). 배포 때마다 여기를 올리고, 이번 업데이트 요약 한 줄은
   // 서버의 Changelog.js에 추가한다 — 그러면 로그인 시 1회성 팝업으로 자동 안내된다.
-  const APP_VERSION = 'V55.18';
+  const APP_VERSION = 'V55.20';
   // 변경이력(APP_CHANGELOG)은 46KB나 돼서 서버(Changelog.js)로 옮겼다 — 팝업이나 "업데이트 내역" 탭을
   // 실제로 열 때만 getChangelog()로 가져온다. 새 버전 안내를 추가할 곳도 이제 Changelog.js다.
 
@@ -309,14 +309,9 @@
   }
 
   // 이번달 마지막 평일(주말 제외)인지 — 월급/차량관리 등에서 "월말 처리"의 기준으로 씀
-  function isLastWeekdayOfMonth_(d) {
-    const date = d || new Date();
-    const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-    while (lastDay.getDay() === 0 || lastDay.getDay() === 6) lastDay.setDate(lastDay.getDate() - 1);
-    return date.getFullYear() === lastDay.getFullYear() && date.getMonth() === lastDay.getMonth() && date.getDate() === lastDay.getDate();
-  }
-
-  let vlogState_ = { vehicle: null, fuelYes: null, isMonthEnd: false };
+  // 월말 킬로수를 물어볼지는 이제 서버(getMyVehicleAndKmDue)가 정한다 —
+  // 마지막 평일 당일인지가 아니라 "그 달 기록이 들어왔는지"로 판단해야 놓친 달을 다시 물어볼 수 있다(2026-09-30)
+  let vlogState_ = { vehicle: null, fuelYes: null, kmDue: null };
 
   function vlogSetFuel_(yes) {
     vlogState_.fuelYes = yes;
@@ -394,10 +389,14 @@
         jobs.push({ date: todayStr_(), vehicle: vlogState_.vehicle, kind: '주유', amount: amount, agent: currentUser.name });
       }
     }
-    if (vlogState_.isMonthEnd) {
+    if (vlogState_.kmDue) {
       const km = numVal('vlog_km');
       if (km > 0) {
-        jobs.push({ date: todayStr_(), vehicle: vlogState_.vehicle, kind: '킬로수', km: km, agent: currentUser.name });
+        // 밀린 달이면 오늘이 아니라 그 달 마지막 평일자로 남긴다 — 안 그러면 이번 달 기록으로 잡혀서
+        // 빈 달이 영영 안 채워지고 이번 달 주행거리만 부풀어 보인다
+        jobs.push({ date: vlogState_.kmDue.date, vehicle: vlogState_.vehicle, kind: '킬로수', km: km, agent: currentUser.name });
+      } else if (!vlogState_.kmDue.isThisMonth) {
+        toast(vlogState_.kmDue.label + ' 말 킬로수는 아직 비어 있습니다 — 다음에 또 여쭤볼게요');
       }
     }
     document.getElementById('vehicleLogModal').classList.add('hidden');
@@ -415,19 +414,25 @@
     if (!currentUser) return;
     if (!confirm('오늘 장부 작성을 완료하고 사장님께 알림을 보낼까요?')) return;
     RUN()
-      .withSuccessHandler(function (vehicle) {
-        if (!vehicle) { sendLedgerCompleteNotify_(); return; } // 배정된 차량이 없으면 차량 팝업 없이 바로 완료알림
-        vlogState_ = { vehicle: vehicle, fuelYes: null, isMonthEnd: isLastWeekdayOfMonth_() };
+      .withSuccessHandler(function (res) {
+        res = res || {};
+        if (!res.vehicle) { sendLedgerCompleteNotify_(); return; } // 배정된 차량이 없으면 차량 팝업 없이 바로 완료알림
+        vlogState_ = { vehicle: res.vehicle, fuelYes: null, kmDue: res.kmDue || null };
         document.getElementById('vlog_amount').value = '';
         document.getElementById('vlog_km').value = '';
         document.getElementById('vlog_amountWrap').classList.add('hidden');
         document.getElementById('vlog_fuelYesBtn').className = 'btn-outline';
         document.getElementById('vlog_fuelNoBtn').className = 'btn-outline';
-        document.getElementById('vlog_kmSection').classList.toggle('hidden', !vlogState_.isMonthEnd);
+        document.getElementById('vlog_kmSection').classList.toggle('hidden', !vlogState_.kmDue);
+        if (vlogState_.kmDue) {
+          document.getElementById('vlog_kmLabel').textContent = vlogState_.kmDue.isThisMonth
+            ? '이번달 마지막 근무일입니다 — 오늘까지의 총 주행거리(누적 킬로수)'
+            : vlogState_.kmDue.label + ' 말 총 킬로수가 아직 비어 있습니다 — 지금 계기판 누적 킬로수를 넣어주세요 (' + vlogState_.kmDue.label + ' 말 기록으로 저장됩니다)';
+        }
         document.getElementById('vehicleLogModal').classList.remove('hidden');
       })
       .withFailureHandler(function () { sendLedgerCompleteNotify_(); }) // 차량 조회 실패해도 완료알림은 보낸다
-      .getMyVehicle(currentUser.name);
+      .getMyVehicleAndKmDue(currentUser.name);
   }
 
   function fmtMoney(n) {

@@ -117,6 +117,13 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   }
 
+  /** 지난달 'yyyy-MM' — Date(y, m-1 - 1)로 넘겨서 1월이면 작년 12월로 알아서 넘어간다 */
+  function prevMonthStr_() {
+    const now = new Date();
+    const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+
   // 좁은 화면에서 목차가 가로 스크롤될 때, 누른 탭이 화면 밖이면 가운데로 끌어온다.
   // scrollIntoView는 페이지까지 세로로 움직여버려서 목차 안에서만 scrollLeft를 직접 계산한다.
   function scrollTabIntoView_(btn) {
@@ -536,6 +543,11 @@
       const cur = currentMonthStr_();
       return all.filter(function (m) { return m.ym === cur; });
     }
+    // 'lastMonth'는 아래 last6/last12 처리(Number('Month')=NaN)에 걸리면 안 되니 여기서 먼저 걸러낸다
+    if (v === 'lastMonth') {
+      const prev = prevMonthStr_();
+      return all.filter(function (m) { return m.ym === prev; });
+    }
     if (v === 'all') return all;
     if (v.indexOf('year:') === 0) {
       const y = v.slice(5);
@@ -797,8 +809,67 @@
   }
 
   // ---- 출장자별 추이 (매출/마진/인센티브) ----
-  function alignAgentSeries_(yms, field) {
-    return (statsCache_.byAgent || []).map(function (a, idx) {
+  // ---- 출장자별·출처별 추이의 기간 선택(2026-09-30) ----
+  // 예전엔 최근 N개월만 골랐다. "이번달"과 "직접 지정"은 기간 평균 요약과 같은 방식으로,
+  // 그 기간만 서버에서 다시 집계해 섹션별로 따로 담아두고 그 묶음으로 그린다.
+  const STATS_SECTION_CFG_ = {
+    statsAgentRangeSel: { rowId: 'statsAgentCustomRow', startId: 'statsAgentCustomStart', endId: 'statsAgentCustomEnd', msgId: 'statsAgentCustomMsg', render: function () { renderStatsAgentCharts_(); } },
+    statsSourceRangeSel: { rowId: 'statsSourceCustomRow', startId: 'statsSourceCustomStart', endId: 'statsSourceCustomEnd', msgId: 'statsSourceCustomMsg', render: function () { renderStatsSourceSection_(); } }
+  };
+  const statsSectionBundle_ = {}; // selId → 직접 지정으로 받아온 집계 묶음
+
+  /** 그 섹션이 지금 그려야 할 {bundle, months} — bundle은 byAgent/bySource를 담고 있는 집계 묶음 */
+  function statsSectionData_(selId) {
+    const v = (document.getElementById(selId) || {}).value || '12';
+    if (v === 'custom') {
+      const b = statsSectionBundle_[selId];
+      return { bundle: b || null, months: (b && b.months) || [] };
+    }
+    if (!statsCache_) return { bundle: null, months: [] };
+    const all = statsCache_.months || [];
+    if (v === 'thisMonth') {
+      const cur = currentMonthStr_();
+      return { bundle: statsCache_, months: all.filter(function (m) { return m.ym === cur; }) };
+    }
+    if (v === 'lastMonth') {
+      const prev = prevMonthStr_();
+      return { bundle: statsCache_, months: all.filter(function (m) { return m.ym === prev; }) };
+    }
+    const n = Number(v) || 12;
+    return { bundle: statsCache_, months: n > 0 ? all.slice(-n) : all };
+  }
+
+  function onStatsSectionRangeChange_(selId) {
+    const cfg = STATS_SECTION_CFG_[selId];
+    if (!cfg) return;
+    const isCustom = (document.getElementById(selId) || {}).value === 'custom';
+    const row = document.getElementById(cfg.rowId);
+    if (row) row.classList.toggle('hidden', !isCustom);
+    if (!isCustom || statsSectionBundle_[selId]) cfg.render();
+  }
+
+  function applyStatsSectionRange_(selId) {
+    const cfg = STATS_SECTION_CFG_[selId];
+    if (!cfg) return;
+    const start = document.getElementById(cfg.startId).value;
+    const end = document.getElementById(cfg.endId).value;
+    const msg = document.getElementById(cfg.msgId);
+    if (!start || !end) { if (msg) msg.textContent = '시작일과 종료일을 모두 선택하세요'; return; }
+    if (start > end) { if (msg) msg.textContent = '시작일이 종료일보다 늦을 수 없습니다'; return; }
+    if (msg) msg.textContent = '불러오는 중...';
+    RUN()
+      .withSuccessHandler(function (res) {
+        statsSectionBundle_[selId] = res || { months: [], byAgent: [], bySource: [] };
+        const got = (statsSectionBundle_[selId].months || []).length;
+        if (msg) msg.textContent = got ? '' : '해당 기간에 데이터가 없습니다.';
+        cfg.render();
+      })
+      .withFailureHandler(function (e) { if (msg) msg.textContent = '오류: ' + e.message; })
+      .getStatisticsForRange(start, end);
+  }
+
+  function alignAgentSeries_(bundle, yms, field) {
+    return ((bundle && bundle.byAgent) || []).map(function (a, idx) {
       const map = {};
       a.months.forEach(function (m) { map[m.ym] = m[field]; });
       return { name: a.agent, color: agentColor_(a.agent, idx), values: yms.map(function (ym) { return map[ym] != null ? map[ym] : null; }) };
@@ -808,12 +879,12 @@
   function renderStatsAgentCharts_() {
     const el = document.getElementById('statsAgentCharts');
     if (!el || !statsCache_) return;
-    const months = statsRangedMonths_('statsAgentRangeSel');
-    const yms = months.map(function (m) { return m.ym; });
+    const data = statsSectionData_('statsAgentRangeSel');
+    const yms = data.months.map(function (m) { return m.ym; });
     const blocks = [
-      ['매출 추이', alignAgentSeries_(yms, 'total')],
-      ['마진 추이', alignAgentSeries_(yms, 'margin')],
-      ['인센티브 추이', alignAgentSeries_(yms, 'incentive')]
+      ['매출 추이', alignAgentSeries_(data.bundle, yms, 'total')],
+      ['마진 추이', alignAgentSeries_(data.bundle, yms, 'margin')],
+      ['인센티브 추이', alignAgentSeries_(data.bundle, yms, 'incentive')]
     ];
     el.innerHTML = blocks.map(function (b) {
       return '<div style="margin-bottom:14px;"><div style="font-size:13px;color:var(--muted);margin-bottom:4px;">' + b[0] + '</div>' + svgLineChart_(yms, b[1], { height: 180 }) + '</div>';
@@ -821,8 +892,8 @@
   }
 
   // ---- 출처별 추이 (매출 상위 10개, 매출/마진) ----
-  function topSourceSeries_(yms, field) {
-    const withTotal = (statsCache_.bySource || []).map(function (s) {
+  function topSourceSeries_(bundle, yms, field) {
+    const withTotal = ((bundle && bundle.bySource) || []).map(function (s) {
       const map = {};
       s.months.forEach(function (m) { map[m.ym] = m; });
       const sumTotal = yms.reduce(function (sum, ym) { return sum + (map[ym] ? map[ym].total : 0); }, 0);
@@ -840,11 +911,11 @@
   function renderStatsSourceCharts_() {
     const el = document.getElementById('statsSourceCharts');
     if (!el || !statsCache_) return;
-    const months = statsRangedMonths_('statsSourceRangeSel');
-    const yms = months.map(function (m) { return m.ym; });
+    const data = statsSectionData_('statsSourceRangeSel');
+    const yms = data.months.map(function (m) { return m.ym; });
     const blocks = [
-      ['매출 추이', topSourceSeries_(yms, 'total')],
-      ['마진 추이', topSourceSeries_(yms, 'margin')]
+      ['매출 추이', topSourceSeries_(data.bundle, yms, 'total')],
+      ['마진 추이', topSourceSeries_(data.bundle, yms, 'margin')]
     ];
     el.innerHTML = blocks.map(function (b) {
       return '<div style="margin-bottom:14px;"><div style="font-size:13px;color:var(--muted);margin-bottom:4px;">' + b[0] + '</div>' + svgLineChart_(yms, b[1], { height: 180 }) + '</div>';
@@ -895,13 +966,13 @@
   function renderStatsSourceTable_() {
     const sourceBody = document.getElementById('statsSourceBody');
     if (!sourceBody || !statsCache_) return;
-    const months = statsRangedMonths_('statsSourceRangeSel');
-    const yms = months.map(function (m) { return m.ym; });
+    const data = statsSectionData_('statsSourceRangeSel');
+    const yms = data.months.map(function (m) { return m.ym; });
     if (!yms.length) { sourceBody.innerHTML = ''; return; }
 
     const ymSet = {};
     yms.forEach(function (ym) { ymSet[ym] = true; });
-    const sourceRowsRaw = (statsCache_.bySource || []).map(function (s) {
+    const sourceRowsRaw = ((data.bundle && data.bundle.bySource) || []).map(function (s) {
       let total = 0, margin = 0, count = 0;
       s.months.forEach(function (m) {
         if (!ymSet[m.ym]) return;
@@ -1529,15 +1600,22 @@
       `공급가액 ${fmtMoney(totalSupply)} + 세액 ${fmtMoney(totalTax)} = 합계 ${fmtMoney(totalSupply+totalTax)}`;
   }
 
-  function submitDoc() {
+  /**
+   * 견적서/거래명세서 PDF 생성.
+   * onDone/onFail을 주면 생성이 끝난 뒤 이어서 실행한다 — "이메일 보내기"에서 PDF가 아직
+   * 없을 때 생성 → 발송으로 이어 붙이는 데 쓴다(2026-09-30). 요청을 실제로 보냈으면 true.
+   */
+  function submitDoc(onDone, onFail) {
+    const done = (typeof onDone === 'function') ? onDone : function () {};
+    const fail = (typeof onFail === 'function') ? onFail : function () {};
     const btn = document.getElementById('docSubmitBtn');
-    if (btn.disabled) return; // 이미 생성 요청이 진행 중 — 중복 클릭으로 문서가 두 번 생성되는 것을 방지
+    if (btn.disabled) return false; // 이미 생성 요청이 진행 중 — 중복 클릭으로 문서가 두 번 생성되는 것을 방지
     const client = document.getElementById('doc_client').value.trim();
     const dateStr = document.getElementById('doc_date').value;
     const resultEl = document.getElementById('docResult');
-    if (!client) { toast('거래처명을 입력하세요'); return; }
-    if (!dateStr) { toast('날짜를 선택하세요'); return; }
-    if (!docItems.length) { toast('품목을 1개 이상 추가하세요'); return; }
+    if (!client) { toast('거래처명을 입력하세요'); return false; }
+    if (!dateStr) { toast('날짜를 선택하세요'); return false; }
+    if (!docItems.length) { toast('품목을 1개 이상 추가하세요'); return false; }
     const [y, m, d] = dateStr.split('-').map(Number);
 
     btn.disabled = true;
@@ -1555,15 +1633,19 @@
           document.getElementById('docEditingName').textContent = res.fileName;
           document.getElementById('docEmailResult').innerHTML = '';
           loadTodayDocsList(docKind);
+          done(res);
         } else {
           resultEl.innerHTML = '<span class="muted">생성 실패</span>';
+          fail(new Error('생성 실패'));
         }
       })
       .withFailureHandler(function (e) {
         btn.disabled = false;
         resultEl.innerHTML = '<span class="muted">오류: ' + e.message + '</span>';
+        fail(e);
       })
       [fn](client, y, m, d, docItems, docEditState.existingFileId, docEditState.linkedRowIndex, currentUser.name);
+    return true;
   }
 
   function handleBizCardUpload(inputEl) {
@@ -1614,11 +1696,28 @@
     reader.readAsDataURL(file);
   }
 
+  /**
+   * 이메일 보내기. PDF가 아직 없으면 "먼저 생성하세요"로 막지 않고 생성부터 하고 이어서
+   * 보낸다(2026-09-30) — 생성돼 있으면 그대로 발송.
+   */
   function sendDocEmail() {
     const email = document.getElementById('doc_emailTo').value.trim();
     const resultEl = document.getElementById('docEmailResult');
     if (!email) { toast('이메일 주소를 입력하세요'); return; }
-    if (!lastDocFileId) { toast('먼저 PDF를 생성하세요'); return; }
+    if (!lastDocFileId) {
+      resultEl.innerHTML = '<span class="muted">PDF 생성 중...</span>';
+      const started = submitDoc(
+        function () { doSendDocEmail_(email, resultEl); },
+        function () { resultEl.innerHTML = '<span class="muted">PDF 생성에 실패해서 메일을 보내지 못했습니다</span>'; }
+      );
+      if (!started) resultEl.innerHTML = '';
+      return;
+    }
+    doSendDocEmail_(email, resultEl);
+  }
+
+  /** 실제 발송 — PDF(lastDocFileId)가 준비된 상태에서만 부른다 */
+  function doSendDocEmail_(email, resultEl) {
     const client = document.getElementById('doc_client').value.trim();
     const attachBankBook = document.getElementById('doc_attachBankBook').checked;
     const attachBizReg = document.getElementById('doc_attachBizReg').checked;
@@ -2377,7 +2476,8 @@
       .withSuccessHandler(function (res) {
         let msg = '발행완료로 표시했습니다';
         if (res && res.trashed) msg += ' · 사진·영상 ' + res.trashed + '개 휴지통으로';
-        if (res && res.failed) msg += ' · ' + res.failed + '개는 못 지웠습니다(직원 계정 파일)';
+        if (res && res.folderTrashed) msg += ' · 사진 폴더도 휴지통으로';
+        if (res && res.failed) msg += ' · ' + res.failed + '개는 못 지웠습니다(직원 계정 파일, 폴더는 남겨둡니다)';
         if (res && res.skipped) msg += ' · ' + res.skipped;
         toast(msg);
       })
@@ -2525,7 +2625,9 @@
         if (!rs.length) { el.innerHTML = '정리할 _가져옴_ 폴더가 없습니다.'; return; }
         const ok = rs.filter(function (r) { return r.ok; });
         const bad = rs.filter(function (r) { return !r.ok; });
+        const pub = ok.filter(function (r) { return r.note; }).length;
         el.innerHTML = '휴지통으로 보냄: ' + ok.length + '개' +
+          (pub ? ' <span class="muted">(그중 ' + pub + '개는 이미 발행완료로 사진을 지운 건)</span>' : '') +
           (bad.length ? '<div style="color:#dc2626;">남겨둠 ' + bad.length + '개 (확인 필요):<br>' + bad.map(function (r) { return escapeHtml_(r.name + ' — ' + r.error); }).join('<br>') + '</div>' : '');
       })
       .withFailureHandler(function (e) { btn.disabled = false; el.innerHTML = '오류: ' + escapeHtml_(e.message); })
