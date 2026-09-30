@@ -17,7 +17,7 @@
 
   // 화면에 보이는 버전 배지(V53.x). 배포 때마다 여기를 올리고, 이번 업데이트 요약 한 줄은
   // 서버의 Changelog.js에 추가한다 — 그러면 로그인 시 1회성 팝업으로 자동 안내된다.
-  const APP_VERSION = 'V55.20';
+  const APP_VERSION = 'V55.21';
   // 변경이력(APP_CHANGELOG)은 46KB나 돼서 서버(Changelog.js)로 옮겼다 — 팝업이나 "업데이트 내역" 탭을
   // 실제로 열 때만 getChangelog()로 가져온다. 새 버전 안내를 추가할 곳도 이제 Changelog.js다.
 
@@ -857,9 +857,11 @@
     document.body.removeChild(ta);
   }
 
-  function openMediaModal(rowIndex, evt) {
+  function openMediaModal(rowIndex, evt, rowId) {
     if (evt) evt.stopPropagation();
     document.getElementById('media_rowIndex').value = rowIndex;
+    // 장부를 정렬하면 행번호가 밀리므로, 화면이 보던 건이 맞는지 서버가 대조할 수 있게 고유ID도 같이 넘긴다(2026-09-30)
+    document.getElementById('media_rowId').value = rowId || '';
     document.getElementById('media_fileInput').value = '';
     document.getElementById('mediaUploadStatus').textContent = '';
     pendingFolderSync_ = null;
@@ -873,7 +875,7 @@
   // 대신 올린 사실을 앱이 바로 알 수 없으므로, 이 화면으로 돌아왔을 때 폴더를 훑어서 연결해준다.
   let pendingFolderSync_ = null; // { rowIndex, uploadedBy } — 드라이브를 열어둔 상태
 
-  function openFieldMediaFolder(rowIndex) {
+  function openFieldMediaFolder(rowIndex, rowId) {
     if (!rowIndex) { toast('기록을 먼저 선택해주세요.'); return; }
     // 서버 응답을 기다렸다가 열면 팝업 차단에 막히므로, 클릭하는 순간 빈 창부터 띄워둔다
     const tab = window.open('', '_blank');
@@ -895,7 +897,7 @@
         if (status) status.textContent = '오류: ' + e.message;
         toast('오류: ' + e.message);
       })
-      .getFieldMediaFolderLink(rowIndex);
+      .getFieldMediaFolderLink(rowIndex, rowId || document.getElementById('media_rowId').value || '');
   }
 
   // 드라이브에 다녀와서 화면이 다시 보이면 폴더를 훑어 새로 올라온 사진/영상을 이 기록에 연결한다
@@ -1112,10 +1114,10 @@
       });
   }
 
-  function uploadOneFileDirect_(file, rowIndex, kind, onProgress) {
+  function uploadOneFileDirect_(file, rowIndex, kind, onProgress, rowId) {
     const sessionId = fileSessionId_(file, rowIndex);
     const mimeType = file.type || 'application/octet-stream';
-    return callServer_('beginDirectMediaUpload', sessionId, rowIndex, file.name, mimeType, file.size)
+    return callServer_('beginDirectMediaUpload', sessionId, rowIndex, file.name, mimeType, file.size, rowId)
       .then(function (res) {
         if (!res || !res.uploadUrl) {
           const err = new Error('업로드 주소를 받지 못했습니다.');
@@ -1126,22 +1128,22 @@
       })
       .then(function (meta) {
         if (onProgress) onProgress(file.size, file.size);
-        return callServer_('finishDirectMediaUpload', sessionId, rowIndex, meta.id, file.name, kind, currentUser.name);
+        return callServer_('finishDirectMediaUpload', sessionId, rowIndex, meta.id, file.name, kind, currentUser.name, rowId);
       });
   }
 
   // ── 업로드 경로 ②: 예전 방식(Apps Script 중계) — 직결이 막힌 환경용 대비책 ──────────────────
-  function uploadOneFileRelay_(file, rowIndex, kind, onProgress) {
+  function uploadOneFileRelay_(file, rowIndex, kind, onProgress, rowId) {
     if (file.size <= MEDIA_SMALL_FILE_LIMIT_) {
       return readBlobAsBase64_(file).then(function (base64) {
-        return callServer_('uploadFieldMedia', rowIndex, base64, file.type, file.name, kind, currentUser.name);
+        return callServer_('uploadFieldMedia', rowIndex, base64, file.type, file.name, kind, currentUser.name, rowId);
       });
     }
     const sessionId = fileSessionId_(file, rowIndex);
     const fileSize = file.size;
     const reportProgress = function (pos) { if (onProgress) onProgress(Math.min(pos, fileSize), fileSize); };
 
-    return callServer_('getResumableUploadedBytes', sessionId, rowIndex, file.name, file.type, fileSize, kind, currentUser.name)
+    return callServer_('getResumableUploadedBytes', sessionId, rowIndex, file.name, file.type, fileSize, kind, currentUser.name, rowId)
       .then(function (startResult) {
         if (startResult && startResult.done) return startResult; // 직전 시도가 실은 이미 성공했던 경우
         let pos = (startResult && startResult.startByte) || 0;
@@ -1154,7 +1156,7 @@
           const chunkStart = pos;
           return readBlobAsBase64_(chunkBlob)
             .then(function (b64) {
-              return callServer_('uploadFieldMediaChunkResumable', sessionId, rowIndex, file.name, file.type, fileSize, chunkStart, b64, kind, currentUser.name);
+              return callServer_('uploadFieldMediaChunkResumable', sessionId, rowIndex, file.name, file.type, fileSize, chunkStart, b64, kind, currentUser.name, rowId);
             })
             .then(function (result) {
               pos = end;
@@ -1168,15 +1170,15 @@
   }
 
   /** onProgress(보낸바이트, 전체바이트) — 직결을 먼저 시도하고, 막혀 있으면 예전 방식으로 올린다 */
-  function uploadOneFile_(file, rowIndex, onProgress) {
+  function uploadOneFile_(file, rowIndex, onProgress, rowId) {
     const kind = file.type.indexOf('video') === 0 ? 'video' : 'photo';
     if (!file.size) return Promise.reject(new Error('파일이 비어 있습니다.'));
-    if (directUploadBlocked_) return uploadOneFileRelay_(file, rowIndex, kind, onProgress);
-    return uploadOneFileDirect_(file, rowIndex, kind, onProgress)
+    if (directUploadBlocked_) return uploadOneFileRelay_(file, rowIndex, kind, onProgress, rowId);
+    return uploadOneFileDirect_(file, rowIndex, kind, onProgress, rowId)
       .catch(function (e) {
         if (!e || !e.directUnsupported) throw e;
         directUploadBlocked_ = true;
-        return uploadOneFileRelay_(file, rowIndex, kind, onProgress);
+        return uploadOneFileRelay_(file, rowIndex, kind, onProgress, rowId);
       });
   }
 
@@ -1242,7 +1244,7 @@
    * files를 순서대로 rowIndex에 업로드하면서 전체화면 오버레이(채워지는 진행률 바)로 진행상황을 보여준다.
    * 실패한 파일이 있어도 나머지는 계속 시도하고, 끝나면 { total, success, failures:[파일명...] }로 알려준다.
    */
-  function runMediaUploadQueue_(files, rowIndex) {
+  function runMediaUploadQueue_(files, rowIndex, rowId) {
     return new Promise(function (resolve) {
       const total = files.length;
       const failures = [];
@@ -1265,7 +1267,7 @@
         uploadOneFile_(file, rowIndex, function (sentBytes, totalBytes) {
           const within = totalBytes > 0 ? sentBytes / totalBytes : 0;
           updateMediaUploadOverlay_(baseLabel + ' (' + mbText_(sentBytes) + '/' + mbText_(totalBytes) + 'MB)', ((idx + within) / total) * 100);
-        })
+        }, rowId)
           .then(function () { next(idx + 1); })
           .catch(function (e) {
             failures.push(file.name + (e && e.message ? ' — ' + e.message : ''));
@@ -1289,6 +1291,7 @@
     const files = inputEl.files;
     if (!files || !files.length) return;
     const rowIndex = Number(document.getElementById('media_rowIndex').value);
+    const rowId = document.getElementById('media_rowId').value || '';
     const status = document.getElementById('mediaUploadStatus');
     const fileList = Array.from(files);
     const total = fileList.length;
@@ -2522,6 +2525,7 @@
           return;
         }
         const targetRowIndex = isEditing ? editState.rowIndex : (res && res.rowIndex);
+        const targetRowId = isEditing ? (editState.rowId || '') : ((res && res.rowId) || '');
 
         // 다음 수정 때 diff를 계산할 수 있도록, 이번에 실제로 저장된 자재 목록을 스냅샷으로 남겨둔다.
         if (targetRowIndex) {
@@ -2610,7 +2614,7 @@
         const mediaFiles = mediaFileEl && mediaFileEl.files ? Array.from(mediaFileEl.files) : [];
         if (mediaFiles.length && targetRowIndex) {
           mediaFileEl.value = '';
-          runMediaUploadQueue_(mediaFiles, targetRowIndex).then(function (r) {
+          runMediaUploadQueue_(mediaFiles, targetRowIndex, targetRowId).then(function (r) {
             if (r.failures.length) {
               toast('사진/영상 ' + r.success + '/' + r.total + '건 업로드 완료, 실패 ' + r.failures.length + '건: ' + r.failures.join(', '));
             } else {

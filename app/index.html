@@ -436,7 +436,7 @@
         <div id="f_editExtras" class="hidden" style="margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fafbfc;">
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <strong style="font-size:13px;">기존 첨부 사진/영상</strong>
-            <button class="btn-outline" style="padding:4px 10px;font-size:12px;" onclick="openMediaModal(editState.rowIndex)">확인 / 추가</button>
+            <button class="btn-outline" style="padding:4px 10px;font-size:12px;" onclick="openMediaModal(editState.rowIndex, null, editState.rowId)">확인 / 추가</button>
           </div>
           <p class="muted" style="margin:4px 0 0;font-size:12px;">이미 첨부된 사진을 확인하려면 누르세요. 새 사진은 위 "현장 사진/영상"란에 끌어다 놓고 저장하면 됩니다(여기서 추가하면 저장 버튼 없이 바로 반영).</p>
         </div>
@@ -866,7 +866,7 @@
             <div style="margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fafbfc;">
               <div style="display:flex;justify-content:space-between;align-items:center;">
                 <strong style="font-size:13px;">현장 사진/영상</strong>
-                <button class="btn-outline" style="padding:4px 10px;font-size:12px;" onclick="openMediaModal(editState.rowIndex)">보기 / 추가</button>
+                <button class="btn-outline" style="padding:4px 10px;font-size:12px;" onclick="openMediaModal(editState.rowIndex, null, editState.rowId)">보기 / 추가</button>
               </div>
               <p class="muted" style="margin:4px 0 0;font-size:12px;">여기서 추가하면 저장 버튼 없이 바로 반영됩니다.</p>
             </div>
@@ -1884,12 +1884,13 @@
       <button class="close-x" onclick="document.getElementById('mediaModal').classList.add('hidden')">✕</button>
       <h3>현장 사진/영상</h3>
       <input type="hidden" id="media_rowIndex" />
+      <input type="hidden" id="media_rowId" />
       <div class="dropzone" ondragover="onDropzoneOver(event)" ondragleave="onDropzoneLeave(event)" ondrop="onDropzoneDrop(event,'media_fileInput')">
         <input id="media_fileInput" type="file" accept="image/*,video/*" multiple onchange="handleMediaFiles(this)" />
         <p class="dropzone-hint">클릭해서 선택하거나, 파일을 여기로 끌어다 놓으세요 (여러 장 가능)</p>
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
-        <button class="btn-outline" style="padding:6px 12px;font-size:12px;" onclick="openFieldMediaFolder(Number(document.getElementById('media_rowIndex').value))">📁 드라이브에서 직접 올리기</button>
+        <button class="btn-outline" style="padding:6px 12px;font-size:12px;" onclick="openFieldMediaFolder(Number(document.getElementById('media_rowIndex').value), document.getElementById('media_rowId').value)">📁 드라이브에서 직접 올리기</button>
         <button class="btn-outline" style="padding:6px 12px;font-size:12px;" onclick="loadMediaList(Number(document.getElementById('media_rowIndex').value))">🔄 새로고침</button>
       </div>
       <p class="muted" style="margin:6px 0 0;font-size:11px;">대용량 영상이나 여러 개를 한꺼번에 올릴 땐 드라이브 쪽이 더 빠릅니다(백그라운드로 둬도 계속 올라감). 다 올리고 이 화면으로 돌아오면 자동으로 목록에 붙습니다.</p>
@@ -2022,9 +2023,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V55.20"></script>
-<script src="script2.js?v=V55.20"></script>
-<script src="script3.js?v=V55.20"></script>
+<script src="script1.js?v=V55.21"></script>
+<script src="script2.js?v=V55.21"></script>
+<script src="script3.js?v=V55.21"></script>
 </body>
 </html>
 
