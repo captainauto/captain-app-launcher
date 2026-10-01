@@ -17,7 +17,7 @@
 
   // 화면에 보이는 버전 배지(V53.x). 배포 때마다 여기를 올리고, 이번 업데이트 요약 한 줄은
   // 서버의 Changelog.js에 추가한다 — 그러면 로그인 시 1회성 팝업으로 자동 안내된다.
-  const APP_VERSION = 'V55.22';
+  const APP_VERSION = 'V55.24';
   // 변경이력(APP_CHANGELOG)은 46KB나 돼서 서버(Changelog.js)로 옮겼다 — 팝업이나 "업데이트 내역" 탭을
   // 실제로 열 때만 getChangelog()로 가져온다. 새 버전 안내를 추가할 곳도 이제 Changelog.js다.
 
@@ -689,22 +689,36 @@
     document.getElementById('bizRegModal').classList.remove('hidden');
 
     const ledgerInfoEl = document.getElementById('bizregLedgerInfo');
+    const payStatusEl = document.getElementById('bizregPayStatus');
     if (r && typeof r === 'object') {
       const payType = String(r.payType || '').trim();
       const confirmed = r.confirmed === '예';
-      const payBadge = payType
-        ? ' <span style="background:' + (confirmed ? '#dcfce7' : '#fef3c7') + ';color:' +
-          (confirmed ? '#166534' : '#92400e') + ';padding:1px 6px;border-radius:8px;font-size:11px;">' +
-          escapeHtml_(payType) + ' ' + (confirmed ? '입금확인' : '미입금') + '</span>'
-        : '';
-      document.getElementById('bizregLedgerMeta').innerHTML = escapeHtml_(fmtDate(r.date) + ' · ' + (r.agent || '')) + payBadge;
+      // 입금 여부(장부 I열 "확인")는 계산서를 끊기 전에 꼭 봐야 하는 값이라 팝업 맨 위에 크게 띄운다.
+      // V53.22부터 값은 있었지만 날짜·출장자 줄 끝 11px 회색 배지라 눈에 띄지 않았다(2026-10-01 사장님 지적).
+      // 미입금이면 금액까지 같이 보여줘서 얼마가 안 들어왔는지 바로 알 수 있게 한다.
+      if (payStatusEl) {
+        if (payType) {
+          payStatusEl.style.background = confirmed ? '#dcfce7' : '#fee2e2';
+          payStatusEl.style.color = confirmed ? '#166534' : '#991b1b';
+          payStatusEl.innerHTML = confirmed
+            ? '✅ 입금 완료 <span style="font-weight:500;font-size:13px;">(' + escapeHtml_(payType) + ')</span>'
+            : '❗ 아직 입금 안 됨 <span style="font-weight:500;font-size:13px;">(' +
+              escapeHtml_(payType) + ' · ' + fmtMoney(r.amount) + ')</span>';
+          payStatusEl.classList.remove('hidden');
+        } else {
+          payStatusEl.classList.add('hidden');
+        }
+      }
+      document.getElementById('bizregLedgerMeta').innerHTML = escapeHtml_(fmtDate(r.date) + ' · ' + (r.agent || ''));
       document.getElementById('bizreg_ledgerAddress').value = r.address || '';
       document.getElementById('bizreg_ledgerContent').value = r.content || '';
       document.getElementById('bizreg_ledgerAmount').value = fmtMoney(r.amount);
       document.getElementById('bizreg_ledgerRemark').value = r.remark || r.note || ''; // 장부검색·최근 장부 행은 remark 없이 note로 온다
       if (ledgerInfoEl) ledgerInfoEl.classList.remove('hidden');
-    } else if (ledgerInfoEl) {
-      ledgerInfoEl.classList.add('hidden');
+    } else {
+      // rowIndex만 넘어온 옛 호출 방식 — 장부 정보가 없으니 입금 여부도 띄울 게 없다
+      if (ledgerInfoEl) ledgerInfoEl.classList.add('hidden');
+      if (payStatusEl) payStatusEl.classList.add('hidden');
     }
 
     RUN()

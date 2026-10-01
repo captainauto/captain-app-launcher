@@ -138,7 +138,7 @@
   let myRecentCache = [];
   function showEmpTab(tab) {
     scrollTabIntoView_(document.getElementById('empTabBtn-' + tab));
-    ['input','incentive','unpaid','search','album','changelog'].forEach(t => {
+    ['input','incentive','unpaid','search','vehicle','album','changelog'].forEach(t => {
       const panel = document.getElementById('empTab-' + t);
       const btn = document.getElementById('empTabBtn-' + t);
       if (panel) panel.classList.toggle('hidden', t !== tab);
@@ -154,8 +154,156 @@
     }
     if (tab === 'unpaid') loadMyUnpaid();
     if (tab === 'search') loadEmpRecentWeek();
+    if (tab === 'vehicle') {
+      const mEl = document.getElementById('ev_month');
+      if (mEl && !mEl.value) {
+        const now = new Date();
+        mEl.value = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+      }
+      loadEmpVehicle();
+    }
     if (tab === 'album') initAlbumTab();
     if (tab === 'changelog') renderChangelogTab();
+  }
+
+  // ---- 직원 차량관리 (2026-10-01) ----
+  // 사장님 결정: 전 차량 조회 + 자기 차량만 입력. 입력 차량은 서버(assertOwnVehicleOrAdmin_)가
+  // 본인 차로 못박으므로 화면은 차량 셀렉트를 아예 두지 않는다 — 고를 게 없으니 틀릴 일도 없다.
+  let evMyVehicle_ = null;
+
+  function evOnFuelKindChange() {
+    const isKm = document.getElementById('ev_fl_kind').value === '킬로수';
+    document.getElementById('ev_fl_amount').classList.toggle('hidden', isKm);
+    document.getElementById('ev_fl_km').classList.toggle('hidden', !isKm);
+  }
+
+  function loadEmpVehicle() {
+    const month = (document.getElementById('ev_month') || {}).value || '';
+    const myCar = document.getElementById('ev_myCar');
+    if (myCar) myCar.innerHTML = '<span class="muted">불러오는 중...</span>';
+    RUN()
+      .withSuccessHandler(renderEmpVehicle_)
+      .withFailureHandler(function (e) {
+        if (myCar) myCar.innerHTML = '<span class="muted">불러오기 실패: ' + escapeHtml_(e.message) + '</span>';
+      })
+      .getEmpVehicleBundle(month);
+  }
+
+  function renderEmpVehicle_(d) {
+    if (!d) return;
+    evMyVehicle_ = d.myVehicle || null;
+
+    // 배정된 차량이 없으면 입력 카드를 숨긴다 — 눌러도 서버가 거절하니 버튼을 보여줄 이유가 없다
+    const hasCar = !!evMyVehicle_;
+    ['ev_inputCard','ev_maintCard'].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('hidden', !hasCar);
+    });
+
+    const info = (d.info || {})[evMyVehicle_] || {};
+    const myCar = document.getElementById('ev_myCar');
+    if (myCar) {
+      myCar.innerHTML = hasCar
+        ? '<div style="font-size:16px;font-weight:700;">' + escapeHtml_(evMyVehicle_) +
+            (info.plate ? ' <span class="muted" style="font-size:13px;font-weight:500;">' + escapeHtml_(info.plate) + '</span>' : '') +
+          '</div>' +
+          '<div class="muted" style="font-size:12px;margin-top:4px;">' +
+            (info.inspectionDue ? '검사만료 ' + escapeHtml_(info.inspectionDue) + ' · ' : '') +
+            (info.oilChangedDate ? '엔진오일 교체 ' + escapeHtml_(info.oilChangedDate) : '엔진오일 교체일 없음') +
+            (info.oilIntervalKm ? ' (주기 ' + escapeHtml_(String(info.oilIntervalKm)) + 'km)' : '') +
+          '</div>'
+        : '<span class="muted">배정된 차량이 없습니다. 관리자에게 차량 배정을 요청해주세요 (아래 내역은 그대로 보실 수 있습니다).</span>';
+    }
+
+    // 정비구분 셀렉트는 서버가 준 목록으로 한 번만 채운다
+    const kindSel = document.getElementById('ev_mt_kind');
+    if (kindSel && !kindSel.options.length) {
+      kindSel.innerHTML = (d.maintKinds || []).map(k => '<option>' + escapeHtml_(k) + '</option>').join('');
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    ['ev_fl_date','ev_mt_date'].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el && !el.value) el.value = today;
+    });
+
+    const dash = '<span class="muted">-</span>';
+    const mine = function (v) { // 내 차량 줄은 굵게 — 목록이 길어도 자기 것부터 눈에 들어오게
+      return (evMyVehicle_ && v === evMyVehicle_) ? 'font-weight:700;' : '';
+    };
+
+    document.getElementById('ev_sumBody').innerHTML = (d.summary || []).length
+      ? d.summary.map(r => `<tr style="${mine(r.vehicle)}">
+          <td>${escapeHtml_(r.vehicle)}</td><td>${escapeHtml_(r.owner||'')}</td>
+          <td>${fmtMoney(r.fuelCost)}</td>
+          <td>${r.drivingKm != null ? r.drivingKm.toLocaleString('ko-KR') + 'km' : dash}</td>
+          <td>${r.costPerKm != null ? r.costPerKm.toLocaleString('ko-KR') : dash}</td></tr>`).join('')
+      : '<tr><td colspan="5" class="muted" style="text-align:center;padding:12px;">이 달 기록이 없습니다.</td></tr>';
+
+    document.getElementById('ev_fuelBody').innerHTML = (d.fuel || []).length
+      ? d.fuel.map(r => `<tr style="${mine(r.vehicle)}">
+          <td style="white-space:nowrap;">${escapeHtml_(r.date)}</td><td>${escapeHtml_(r.vehicle)}</td>
+          <td>${escapeHtml_(r.kind||'')}</td>
+          <td>${r.km ? Number(r.km).toLocaleString('ko-KR') : ''}</td>
+          <td>${r.amount ? fmtMoney(r.amount) : ''}</td><td>${escapeHtml_(r.agent||'')}</td></tr>`).join('')
+      : '<tr><td colspan="6" class="muted" style="text-align:center;padding:12px;">이 달 주유 기록이 없습니다.</td></tr>';
+
+    document.getElementById('ev_maintBody').innerHTML = (d.maints || []).length
+      ? d.maints.map(r => `<tr style="${mine(r.vehicle)}">
+          <td style="white-space:nowrap;">${escapeHtml_(r.date)}</td><td>${escapeHtml_(r.vehicle)}</td>
+          <td>${escapeHtml_(r.kind||'')}</td><td>${escapeHtml_(r.content||'')}</td>
+          <td>${fmtMoney(r.amount)}</td><td>${escapeHtml_(r.shop||'')}</td>
+          <td>${r.km ? Number(r.km).toLocaleString('ko-KR') + 'km' : ''}</td></tr>`).join('')
+      : '<tr><td colspan="7" class="muted" style="text-align:center;padding:12px;">이 달 정비 기록이 없습니다.</td></tr>';
+
+    document.getElementById('ev_fineBody').innerHTML = (d.fines || []).length
+      ? d.fines.map(r => `<tr style="${mine(r.vehicle)}">
+          <td style="white-space:nowrap;">${escapeHtml_(r.date)}</td><td>${escapeHtml_(r.vehicle)}</td>
+          <td>${escapeHtml_(r.agent||'')}</td><td>${fmtMoney(r.amount)}</td>
+          <td>${escapeHtml_(r.reason||'')}</td></tr>`).join('')
+      : '<tr><td colspan="5" class="muted" style="text-align:center;padding:12px;">이 달 과태료가 없습니다 👍</td></tr>';
+  }
+
+  function evAddFuel() {
+    const kind = document.getElementById('ev_fl_kind').value;
+    const date = document.getElementById('ev_fl_date').value;
+    const amount = Number(document.getElementById('ev_fl_amount').value) || 0;
+    const km = Number(document.getElementById('ev_fl_km').value) || 0;
+    if (!date) return toast('날짜를 넣어주세요');
+    if (kind === '주유' && amount <= 0) return toast('주유 금액을 넣어주세요');
+    if (kind === '킬로수' && km <= 0) return toast('총 킬로수를 넣어주세요');
+    // 차량·담당자는 보내지 않는다 — 서버가 세션으로 본인 차량/이름을 박는다
+    RUN()
+      .withSuccessHandler(function (res) {
+        toast('주유 기록 저장됨 ✅');
+        document.getElementById('ev_fl_amount').value = '';
+        document.getElementById('ev_fl_km').value = '';
+        if (res && res.month) document.getElementById('ev_month').value = res.month;
+        loadEmpVehicle();
+      })
+      .withFailureHandler(e => toast('오류: ' + e.message))
+      .addFuelLog({ date: date, kind: kind, amount: amount, km: km });
+  }
+
+  function evAddMaint() {
+    const date = document.getElementById('ev_mt_date').value;
+    const kind = document.getElementById('ev_mt_kind').value;
+    const amount = Number(document.getElementById('ev_mt_amount').value) || 0;
+    const content = document.getElementById('ev_mt_content').value.trim();
+    if (!date) return toast('날짜를 넣어주세요');
+    if (amount <= 0) return toast('금액을 넣어주세요');
+    RUN()
+      .withSuccessHandler(function (res) {
+        toast(res && res.oilUpdated ? '정비 기록 저장됨 ✅ 엔진오일 교체일도 갱신했습니다' : '정비 기록 저장됨 ✅');
+        ['ev_mt_amount','ev_mt_content','ev_mt_shop','ev_mt_km'].forEach(id => document.getElementById(id).value = '');
+        if (res && res.month) document.getElementById('ev_month').value = res.month;
+        loadEmpVehicle();
+      })
+      .withFailureHandler(e => toast('오류: ' + e.message))
+      .addMaintenance({
+        date: date, kind: kind, amount: amount, content: content,
+        shop: document.getElementById('ev_mt_shop').value.trim(),
+        km: Number(document.getElementById('ev_mt_km').value) || 0
+      });
   }
 
   let empSearchCache = [];
@@ -1964,7 +2112,8 @@
   function renderDashboardStats(d) {
     if (!d) return;
     const td = d.today || {count:0,total:0,margin:0};
-    const tm = d.thisMonth, lm = d.lastMonth;
+    const tm = d.thisMonth || {count:0,total:0,margin:0};
+    const lm = d.lastMonth || {count:0,total:0,margin:0};
     const tAvg = d.thisMonthAvg || {total:0,margin:0,count:0,workDays:0};
     const lAvg = d.lastMonthAvg || {total:0,margin:0,count:0,workDays:0};
     const dTotal = pctDelta(tAvg.total, lAvg.total);
@@ -1981,19 +2130,22 @@
         <div class="stat-label">이번 달 매출</div>
         <div class="stat-value">${fmtMoney(tm.total)}</div>
         <div class="stat-delta ${dTotal.cls}">${dTotal.txt}</div>
-        <div class="stat-delta" style="color:var(--muted);">일평균 ${fmtMoney(Math.round(tAvg.total))}</div>
+        <div class="stat-delta" style="color:var(--muted);">일평균 ${fmtMoney(Math.round(tAvg.total))} ← 지난달 ${fmtMoney(Math.round(lAvg.total))}</div>
+        <div class="stat-delta" style="color:var(--muted);">지난달 합계 ${fmtMoney(lm.total)}</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">이번 달 마진</div>
         <div class="stat-value" style="color:#16a34a;">${fmtMoney(tm.margin)}</div>
         <div class="stat-delta ${dMargin.cls}">${dMargin.txt}</div>
-        <div class="stat-delta" style="color:var(--muted);">일평균 ${fmtMoney(Math.round(tAvg.margin))}</div>
+        <div class="stat-delta" style="color:var(--muted);">일평균 ${fmtMoney(Math.round(tAvg.margin))} ← 지난달 ${fmtMoney(Math.round(lAvg.margin))}</div>
+        <div class="stat-delta" style="color:var(--muted);">지난달 합계 ${fmtMoney(lm.margin)}</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">이번 달 건수</div>
         <div class="stat-value">${tm.count}건</div>
         <div class="stat-delta ${dCount.cls}">${dCount.txt}</div>
-        <div class="stat-delta" style="color:var(--muted);">일평균 ${tAvg.count.toFixed(1)}건</div>
+        <div class="stat-delta" style="color:var(--muted);">일평균 ${tAvg.count.toFixed(1)}건 ← 지난달 ${lAvg.count.toFixed(1)}건</div>
+        <div class="stat-delta" style="color:var(--muted);">지난달 합계 ${lm.count}건</div>
       </div>
       <div style="flex-basis:100%;font-size:11px;color:var(--muted);margin-top:-4px;">${avgNote}</div>`;
 
