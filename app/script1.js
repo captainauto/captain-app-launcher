@@ -17,7 +17,7 @@
 
   // 화면에 보이는 버전 배지(V53.x). 배포 때마다 여기를 올리고, 이번 업데이트 요약 한 줄은
   // 서버의 Changelog.js에 추가한다 — 그러면 로그인 시 1회성 팝업으로 자동 안내된다.
-  const APP_VERSION = 'V55.24';
+  const APP_VERSION = 'V55.26';
   // 변경이력(APP_CHANGELOG)은 46KB나 돼서 서버(Changelog.js)로 옮겼다 — 팝업이나 "업데이트 내역" 탭을
   // 실제로 열 때만 getChangelog()로 가져온다. 새 버전 안내를 추가할 곳도 이제 Changelog.js다.
 
@@ -1547,7 +1547,10 @@
       showAdminTab('dash');
     } else {
       document.getElementById('employeeView').classList.remove('hidden');
-      document.getElementById('empGreeting').textContent = currentUser.name + '님, 출장 기록 입력';
+      document.getElementById('empGreeting').textContent = currentUser.name + '님';
+      // 첫 화면은 직원 대시보드(2026-10-01, V55.25). 대시보드 요청을 가장 먼저 보내고, 기록 입력 탭용
+      // 요청(오늘 기록·자재 목록)은 그 뒤에 보낸다 — 관리자 대시보드와 같은 이유(서버 자원을 덜 다투게).
+      showEmpTab('dash');
       loadMyRecent();
     }
     // 로그인 시 첫 화면(대시보드)에 필요한 것만 부른다.
@@ -1846,6 +1849,7 @@
    */
   function maybeSyncStockPrice_(s, newPrice) {
     if (!s || !s.rowIndex || !newPrice || newPrice === s.dPrice) return;
+    if (!isAdminRole_(currentUser.role)) return; // 마스터 단가는 관리자만 고친다(서버도 막는다)
     if (!confirm('단가(부가세 제외)가 재고현황에 등록된 값(' + fmtMoney(s.dPrice) + ')과 다릅니다.\n재고현황의 단가를 ' + fmtMoney(newPrice) + '(으)로 수정하시겠습니까?')) return;
     const newDPrice = newPrice;
     const newVatPrice = s.vatPrice > 0 ? Math.round(newPrice * 1.1) : s.vatPrice;
@@ -1935,6 +1939,7 @@
    */
   function maybeSyncPriceEntry_(name, inputPrice, priceType) {
     if (!inputPrice) return;
+    if (!isAdminRole_(currentUser.role)) return; // 마스터 단가는 관리자만 고친다(서버도 막는다)
     const existing = priceListCache.find(function (p) { return String(p.name || '').trim().toLowerCase() === name.toLowerCase(); });
     if (!existing || !existing.rowIndex) return;
     const existingSupply = Number(existing.supply) || 0;

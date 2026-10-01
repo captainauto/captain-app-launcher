@@ -138,12 +138,14 @@
   let myRecentCache = [];
   function showEmpTab(tab) {
     scrollTabIntoView_(document.getElementById('empTabBtn-' + tab));
-    ['input','incentive','unpaid','search','vehicle','album','changelog'].forEach(t => {
+    ['dash','input','incentive','unpaid','search','vehicle','album','changelog'].forEach(t => {
       const panel = document.getElementById('empTab-' + t);
       const btn = document.getElementById('empTabBtn-' + t);
       if (panel) panel.classList.toggle('hidden', t !== tab);
       if (btn) btn.classList.toggle('active', t !== tab ? false : true);
     });
+    // 대시보드는 들어올 때마다 새로 부른다 — 기록을 넣고 돌아오면 실적·최근 기록이 바로 바뀌어 있어야 한다
+    if (tab === 'dash') loadEmpDashboard();
     if (tab === 'incentive') {
       const mEl = document.getElementById('empIncMonth');
       if (mEl && !mEl.value) {
@@ -164,6 +166,202 @@
     }
     if (tab === 'album') initAlbumTab();
     if (tab === 'changelog') renderChangelogTab();
+  }
+
+  // ====================== 내 할 일 + 직원 대시보드 (2026-10-01, V55.25) ======================
+  // Design Ref: docs/02-design/features/todo.design.md §5
+  // 할 일은 관리자·직원 모두 본인 것만(서버 Todo.js가 세션으로 판정). 카드 그리는 코드는 둘이 같이 쓴다.
+  // 직원 대시보드엔 다른 직원 이름을 그리지 않는다 — 공동 출장이면 출장자 칸에 동료 이름이 있어서
+  // 최근 기록은 날짜·주소·내용·금액만 보여준다.
+  const todoState_ = { emp: { list: [], openDone: false, editId: null, delId: null },
+                       admin: { list: [], openDone: false, editId: null, delId: null } };
+  const TODO_BOX_ = { emp: 'empTodoBox', admin: 'adminTodoBox' };
+
+  function todayYmd_() { return fmtDate(new Date()); }
+  function addDaysYmd_(ymd, n) {
+    const p = ymd.split('-').map(Number);
+    return fmtDate(new Date(p[0], p[1] - 1, p[2] + n));
+  }
+  function todoDueLabel_(due, done) {
+    if (!due) return '';
+    const t = todayYmd_();
+    const p = due.split('-').map(Number);
+    let txt = (due === t) ? '오늘' : (due === addDaysYmd_(t, 1)) ? '내일' : (p[1] + '/' + p[2]);
+    let cls = '';
+    if (!done && due < t) { cls = ' over'; txt += ' 지남'; }
+    else if (!done && (due === t || due === addDaysYmd_(t, 1))) cls = ' soon';
+    return '<span class="td-due-lbl' + cls + '">' + escapeHtml_(txt) + '</span>';
+  }
+
+  function renderTodoCard_(who) {
+    const box = document.getElementById(TODO_BOX_[who]);
+    if (!box) return;
+    const st = todoState_[who];
+    const open = st.list.filter(t => !t.done), done = st.list.filter(t => t.done);
+    const item = function (t) {
+      const id = escapeHtml_(t.id);
+      if (st.editId === t.id) {
+        return '<div class="td-item"><div class="td-edit">' +
+          '<input type="text" id="tdEditText_' + who + '" maxlength="200" value="' + escapeHtml_(t.text) + '" ' +
+            'onkeydown="if(event.key===\'Enter\'){event.preventDefault();todoSaveEdit_(\'' + who + '\')}">' +
+          '<input type="date" id="tdEditDue_' + who + '" value="' + escapeHtml_(t.due) + '">' +
+          '<button class="btn-primary" onclick="todoSaveEdit_(\'' + who + '\')">저장</button>' +
+          '<button class="btn-outline" onclick="todoCancelEdit_(\'' + who + '\')">취소</button>' +
+        '</div></div>';
+      }
+      if (st.delId === t.id) {
+        return '<div class="td-item"><div class="td-body">"' + escapeHtml_(t.text) + '" 삭제할까요?</div>' +
+          '<button class="btn-danger" style="padding:6px 12px;font-size:13px;" onclick="todoDelete_(\'' + who + '\',\'' + id + '\')">삭제</button>' +
+          '<button class="btn-outline" style="padding:6px 12px;font-size:13px;" onclick="todoAskDelete_(\'' + who + '\',null)">취소</button></div>';
+      }
+      return '<div class="td-item' + (t.done ? ' done' : '') + '">' +
+        '<button class="td-chk" title="' + (t.done ? '완료 취소' : '완료') + '" onclick="todoToggle_(\'' + who + '\',\'' + id + '\')">' + (t.done ? '✓' : '') + '</button>' +
+        '<div class="td-body">' + escapeHtml_(t.text) + todoDueLabel_(t.due, t.done) + '</div>' +
+        (t.done ? '' : '<button class="td-act" title="수정" onclick="todoStartEdit_(\'' + who + '\',\'' + id + '\')">✏️</button>') +
+        '<button class="td-act del" title="삭제" onclick="todoAskDelete_(\'' + who + '\',\'' + id + '\')">🗑</button>' +
+      '</div>';
+    };
+    let html =
+      '<div class="td-add">' +
+        '<input type="text" class="td-text" id="tdNewText_' + who + '" maxlength="200" placeholder="할 일을 적고 Enter" ' +
+          'onkeydown="if(event.key===\'Enter\'){event.preventDefault();todoAdd_(\'' + who + '\')}">' +
+        '<input type="date" class="td-due" id="tdNewDue_' + who + '" title="마감일 (선택)">' +
+        '<button class="btn-primary" onclick="todoAdd_(\'' + who + '\')">추가</button>' +
+      '</div>' +
+      '<div class="td-msg" id="tdMsg_' + who + '"></div>' +
+      '<div class="td-list">' + (open.length ? open.map(item).join('') : '<div class="muted" style="padding:8px 0;">할 일이 없습니다.</div>') + '</div>';
+    if (done.length) {
+      html += '<div class="td-done-toggle" onclick="todoToggleDoneList_(\'' + who + '\')">' +
+        (st.openDone ? '▾' : '▸') + ' 완료 목록 (' + done.length + ')</div>';
+      if (st.openDone) html += '<div class="td-list">' + done.map(item).join('') + '</div>';
+    }
+    box.innerHTML = html;
+  }
+
+  function todoSetList_(who, list) {
+    todoState_[who].list = Array.isArray(list) ? list : [];
+    todoState_[who].editId = null;
+    todoState_[who].delId = null;
+    renderTodoCard_(who);
+  }
+  function todoErr_(who) {
+    return function (e) {
+      const m = document.getElementById('tdMsg_' + who);
+      if (m) m.textContent = e.message;
+      // 남이 지웠거나 이미 없는 항목이면 목록을 새로 받아온다
+      if (/이미 삭제/.test(e.message)) RUN().withSuccessHandler(l => todoSetList_(who, l)).getMyTodos();
+    };
+  }
+  function todoAdd_(who) {
+    const tEl = document.getElementById('tdNewText_' + who), dEl = document.getElementById('tdNewDue_' + who);
+    const text = (tEl.value || '').trim();
+    if (!text) { tEl.focus(); return; }
+    tEl.disabled = true;
+    RUN().withSuccessHandler(function (l) {
+      todoSetList_(who, l);
+      const n = document.getElementById('tdNewText_' + who);
+      if (n) n.focus();
+    }).withFailureHandler(function (e) { tEl.disabled = false; todoErr_(who)(e); })
+      .addTodo(text, dEl.value || '');
+  }
+  function todoToggle_(who, id) { RUN().withSuccessHandler(l => todoSetList_(who, l)).withFailureHandler(todoErr_(who)).toggleTodo(id); }
+  function todoStartEdit_(who, id) { todoState_[who].editId = id; todoState_[who].delId = null; renderTodoCard_(who);
+    const el = document.getElementById('tdEditText_' + who); if (el) el.focus(); }
+  function todoCancelEdit_(who) { todoState_[who].editId = null; renderTodoCard_(who); }
+  function todoSaveEdit_(who) {
+    const id = todoState_[who].editId;
+    const text = (document.getElementById('tdEditText_' + who).value || '').trim();
+    const due = document.getElementById('tdEditDue_' + who).value || '';
+    if (!text) return;
+    RUN().withSuccessHandler(l => todoSetList_(who, l)).withFailureHandler(todoErr_(who)).updateTodo(id, text, due);
+  }
+  function todoAskDelete_(who, id) { todoState_[who].delId = id; todoState_[who].editId = null; renderTodoCard_(who); }
+  function todoDelete_(who, id) { RUN().withSuccessHandler(l => todoSetList_(who, l)).withFailureHandler(todoErr_(who)).deleteTodo(id); }
+  function todoToggleDoneList_(who) { todoState_[who].openDone = !todoState_[who].openDone; renderTodoCard_(who); }
+
+  function loadAdminTodos() {
+    RUN().withSuccessHandler(l => todoSetList_('admin', l))
+      .withFailureHandler(function (e) {
+        const box = document.getElementById('adminTodoBox');
+        if (box) box.innerHTML = '<span class="muted">불러오기 실패: ' + escapeHtml_(e.message) + '</span>';
+      }).getMyTodos();
+  }
+
+  // ---- 직원 대시보드 ----
+  let empDashToday_ = [];
+  function loadEmpDashboard() {
+    const hello = document.getElementById('ed_hello');
+    if (hello && currentUser) hello.textContent = currentUser.name + '님, 오늘도 안전하게!';
+    RUN().withSuccessHandler(renderEmpDash_)
+      .withFailureHandler(function (e) {
+        ['empTodoBox', 'ed_month', 'ed_recent'].forEach(function (id) {
+          const el = document.getElementById(id);
+          if (el) el.innerHTML = '<span class="muted">불러오기 실패: ' + escapeHtml_(e.message) + '</span>';
+        });
+      }).getEmpDashboardBundle();
+  }
+
+  function renderEmpDash_(d) {
+    d = d || {};
+    const err = d.errors || {};
+    const fail = function (k) { return '<span class="muted">불러오기 실패: ' + escapeHtml_(err[k] || '알 수 없음') + '</span>'; };
+
+    // ② 할 일
+    if (d.todos) todoSetList_('emp', d.todos);
+    else document.getElementById('empTodoBox').innerHTML = fail('todos');
+
+    // ③ 챙길 것 — 해당 없으면 카드를 숨긴다
+    const a = d.alerts || {};
+    const lines = [];
+    if (a.kmDue) {
+      lines.push('<div class="ed-alert"><span>🚗 ' + escapeHtml_(a.kmDue.isThisMonth ? '이번 달 말 총 킬로수를 넣어주세요' : a.kmDue.label + ' 말 총 킬로수가 비어 있어요') +
+        '</span><button class="btn-outline" onclick="showEmpTab(\'vehicle\')">넣기</button></div>');
+    }
+    if (a.unpaidCount > 0) {
+      lines.push('<div class="ed-alert"><span>💰 입금 미확인 ' + a.unpaidCount + '건 · ' + fmtMoney(a.unpaidTotal) +
+        '</span><button class="btn-outline" onclick="showEmpTab(\'unpaid\')">보기</button></div>');
+    }
+    document.getElementById('ed_alerts').innerHTML = lines.join('');
+    document.getElementById('ed_alertCard').classList.toggle('hidden', !lines.length);
+
+    // ④ 이번 달 내 실적 — 비교는 본인 지난달과만
+    const mEl = document.getElementById('ed_month');
+    if (d.month) {
+      const m = d.month, diff = m.count - m.prevSamePeriodCount;
+      const cmp = diff > 0 ? '지난달 이맘때보다 <b style="display:inline;font-size:inherit;color:#16a34a;">+' + diff + '건</b>'
+                : diff < 0 ? '지난달 이맘때보다 ' + diff + '건'
+                : '지난달 이맘때와 같아요';
+      mEl.innerHTML =
+        '<div class="ed-stats">' +
+          '<div class="ed-stat"><span class="muted">시공 건수</span><b>' + m.count + '건</b></div>' +
+          '<div class="ed-stat"><span class="muted">예상 인센티브</span><b>' + fmtMoney(m.incentive) + '</b></div>' +
+        '</div><div class="muted" style="margin-top:8px;">' + cmp + ' (지난달 1일~같은 날짜 ' + m.prevSamePeriodCount + '건)</div>';
+    } else mEl.innerHTML = fail('month');
+
+    // ⑤ 내 최근 기록 — 오늘 + 지난 근무일. 오늘 것만 눌러서 고칠 수 있다(직원은 오늘 등록분만 수정 가능)
+    const rEl = document.getElementById('ed_recent');
+    if (!d.recent) { rEl.innerHTML = fail('recent'); return; }
+    const md = function (ds) { const p = ds.split('-').map(Number); return p[1] + '/' + p[2]; };
+    const line = function (r, i, tap) {
+      return '<div class="ed-rec' + (tap ? ' tap' : '') + '"' + (tap ? ' onclick="empDashEdit_(' + i + ')"' : '') + '>' +
+        escapeHtml_(r.address) + ' · ' + escapeHtml_(r.content) + ' · ' + fmtMoney(r.amount) + '</div>';
+    };
+    const t = d.recent.today;
+    empDashToday_ = t.rows || [];
+    let html = '<div class="ed-day"><div class="ed-day-h"><span>오늘 (' + md(t.date) + ' ' + escapeHtml_(t.weekday) + ')</span><span>' + empDashToday_.length + '건</span></div>' +
+      (empDashToday_.length ? empDashToday_.map((r, i) => line(r, i, true)).join('')
+        : '<div class="ed-rec muted">아직 없음 · <a href="javascript:void(0)" onclick="showEmpTab(\'input\')">기록 입력</a></div>') + '</div>';
+    const l = d.recent.lastDay;
+    if (l) {
+      html += '<div class="ed-day"><div class="ed-day-h"><span>지난 근무일 (' + md(l.date) + ' ' + escapeHtml_(l.weekday) + ')</span><span>' + l.rows.length + '건</span></div>' +
+        l.rows.map((r, i) => line(r, i, false)).join('') + '</div>';
+    }
+    rEl.innerHTML = html;
+  }
+
+  function empDashEdit_(i) {
+    const r = empDashToday_[i];
+    if (r) editRowInForm(r); // 기록 입력 탭으로 데려가서 수정 모드로 연다
   }
 
   // ---- 직원 차량관리 (2026-10-01) ----
@@ -579,7 +777,7 @@
 
     if (tab === 'stock') loadStockAndPrice();
     if (tab === 'doorlock') loadDoorlockCatalogTab();
-    if (tab === 'dash') loadDashboard();
+    if (tab === 'dash') { loadDashboard(); loadAdminTodos(); } // 할 일은 대시보드 요청 뒤에 보낸다(첫 화면 숫자가 먼저)
     if (tab === 'incentive') { loadIncentive(); loadMonthlySettlement(); }
     if (tab === 'stats') { loadStatistics(); loadPnL(); }
     if (tab === 'album') initAlbumTab();
