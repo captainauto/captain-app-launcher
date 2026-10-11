@@ -726,8 +726,7 @@
         <div style="display:flex;gap:8px;align-items:center;">
           <select id="branchSelect" class="hidden" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;" onchange="switchBranch(this.value)">
             <option value="">본사</option>
-            <option value="인천">인천지점</option>
-            <option value="남양주">남양주지점</option>
+            <!-- 지점들은 Script1 fillBranchSelects_가 지점 목록(서버 BRANCHES_)으로 채운다 -->
           </select>
           <!-- 교육자료: 관리자 화면(본사·지점 관리자 = 점주)에만 있다. 구글 드라이브 점주용 PDF(링크 있는 사람 누구나 보기)를 연다.
                내용을 고치면 15_교육자료의 드라이브올리기.js가 같은 파일 ID에 덮어쓰므로 이 링크는 바꿀 필요 없다. -->
@@ -1076,10 +1075,7 @@
             <select id="newUserRole">
               <option value="직원">직원</option>
               <option value="관리자">관리자</option>
-              <option value="인천관리자">인천관리자</option>
-              <option value="남양주관리자">남양주관리자</option>
-              <option value="인천직원">인천직원</option>
-              <option value="남양주직원">남양주직원</option>
+              <!-- 지점 역할은 Script1 fillBranchSelects_가 지점 목록(서버 BRANCHES_)으로 채운다 -->
             </select>
             <button class="btn-primary" id="addUserBtn" onclick="addNewUser()">추가</button>
             <button class="btn-outline hidden" id="cancelUserEditBtn" onclick="cancelUserEdit()">취소</button>
@@ -2231,9 +2227,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V55.28"></script>
-<script src="script2.js?v=V55.28"></script>
-<script src="script3.js?v=V55.28"></script>
+<script src="script1.js?v=V55.30"></script>
+<script src="script2.js?v=V55.30"></script>
+<script src="script3.js?v=V55.30"></script>
 </body>
 </html>
 

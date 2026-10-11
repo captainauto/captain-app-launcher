@@ -2313,7 +2313,7 @@
     body.innerHTML = list.map(r => `
       <tr>
         <td style="white-space:nowrap;">${escapeHtml_(dateWithDow_(r.date||''))}</td><td>${escapeHtml_(r.address||'')}</td><td>${escapeHtml_(r.content||'')}</td><td style="background:#EAD1DC;">${fmtMoney(r.amount)}</td><td style="background:#B7E1CD;">${escapeHtml_(r.agent||'')}</td>
-        <td><button class="btn-primary" style="padding:4px 10px;font-size:12px;" onclick="doCashDone(${r.rowIndex}, this)">완료</button></td>
+        <td><button class="btn-primary" style="padding:4px 10px;font-size:12px;" onclick="doCashDone(${r.rowIndex}, this, '${escapeHtml_(r.rowId || '')}')">완료</button></td>
       </tr>`).join('');
   }
 
@@ -2328,10 +2328,11 @@
       .getTodayCashPending();
   }
 
-  function doCashDone(rowIndex, btnEl) {
+  function doCashDone(rowIndex, btnEl, rowId) {
     if (btnEl) { btnEl.disabled = true; btnEl.textContent = '처리중...'; }
     RUN()
-      .withSuccessHandler(function () {
+      .withSuccessHandler(function (res) {
+        if (res && res.success === false) { toast(res.message || '처리하지 못했습니다'); loadTodayCash(); return; }
         toast('수령 확인됨 ✅');
         loadTodayCash();
       })
@@ -2339,13 +2340,13 @@
         toast('오류: ' + e.message);
         if (btnEl) { btnEl.disabled = false; btnEl.textContent = '완료'; }
       })
-      .markCashDone(rowIndex);
+      .markCashDone(rowIndex, '', rowId || '');
   }
 
   let unpaidNoteTarget_ = null; // {rowIndex, btnEl}
 
-  function doUnpaidDone(rowIndex, btnEl) {
-    unpaidNoteTarget_ = { rowIndex: rowIndex, btnEl: btnEl };
+  function doUnpaidDone(rowIndex, btnEl, rowId) {
+    unpaidNoteTarget_ = { rowIndex: rowIndex, btnEl: btnEl, rowId: rowId || '' };
     const noteInput = document.getElementById('un_note');
     if (noteInput) noteInput.value = '';
     document.getElementById('unpaidNoteModal').classList.remove('hidden');
@@ -2360,13 +2361,15 @@
   function submitUnpaidDone_() {
     if (!unpaidNoteTarget_) return;
     const rowIndex = unpaidNoteTarget_.rowIndex;
+    const rowId = unpaidNoteTarget_.rowId;
     const btnEl = unpaidNoteTarget_.btnEl;
     const note = document.getElementById('un_note').value.trim();
     document.getElementById('unpaidNoteModal').classList.add('hidden');
     unpaidNoteTarget_ = null;
     if (btnEl) { btnEl.disabled = true; btnEl.textContent = '처리중...'; }
     RUN()
-      .withSuccessHandler(function () {
+      .withSuccessHandler(function (res) {
+        if (res && res.success === false) { toast(res.message || '처리하지 못했습니다'); loadDashboard(); return; }
         toast('입금 확인 처리됨 ✅');
         loadDashboard();
       })
@@ -2374,7 +2377,7 @@
         toast('오류: ' + e.message);
         if (btnEl) { btnEl.disabled = false; btnEl.textContent = '완료'; }
       })
-      .markCashDone(rowIndex, note);
+      .markCashDone(rowIndex, note, rowId);
   }
 
   function pctDelta(cur, prev) {
@@ -2577,7 +2580,7 @@
           <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml_(dateWithDow_(u.date))}</td>${truncTd_(u.address||'', 173)}${truncTd_(u.content||'', 173)}<td style="background:#B7E1CD;">${escapeHtml_(u.agent||'')}</td>
           <td>${escapeHtml_(u.source||'')}</td>
           <td style="white-space:nowrap;background:#EAD1DC;">${fmtMoney(u.amount)}</td><td>${payTypeShort_(u.payType)}</td>${truncTd_(u.note||'', 114)}
-          <td><button class="btn-primary" style="padding:4px 10px;font-size:12px;" onclick="event.stopPropagation();doUnpaidDone(${u.rowIndex}, this)">완료</button></td>
+          <td><button class="btn-primary" style="padding:4px 10px;font-size:12px;" onclick="event.stopPropagation();doUnpaidDone(${u.rowIndex}, this, '${escapeHtml_(u.rowId || '')}')">완료</button></td>
         </tr>`).join('');
     }
   }
@@ -4345,7 +4348,14 @@
     document.getElementById('integratedReviewModal').classList.add('hidden');
     // 본사(owner)와 지금 완료를 누른 이 지점 관리자 본인에게 그날 전체 기록 요약을 보낸다.
     // 인센티브 발송과 독립적인 알림이라 실패해도 완료 흐름을 막지 않는다.
-    RUN().withFailureHandler(function () {}).notifyIntegratedLedgerComplete(dateStr);
+    // 결과를 버리면 메일이 안 가도 아무도 몰랐다(2026-10-11 점검) — 실패만 짧게 알린다.
+    RUN()
+      .withSuccessHandler(function (res) {
+        const failed = ((res && res.results) || []).filter(function (x) { return !(x.result && x.result.success); });
+        if (failed.length) toast('⚠️ 하루 요약 메일을 못 보낸 곳: ' + failed.map(function (x) { return x.key === 'owner' ? '사장님' : x.key; }).join(', ') + ' (알림 이메일 설정 확인)');
+      })
+      .withFailureHandler(function (e) { toast('⚠️ 하루 요약 메일 발송 오류: ' + e.message); })
+      .notifyIntegratedLedgerComplete(dateStr);
     RUN()
       .withSuccessHandler(function (res) {
         const results = (res && res.results) || [];
@@ -4730,6 +4740,7 @@
         const results = (res && res.results) || [];
         if (!results.length) { toast('정산 대상(인센티브 또는 과태료가 있는 직원)이 없습니다'); return; }
         const lines = results.map(r => `${r.agent}: ${fmtMoney(r.finalAmount)} ${r.success ? '✅' : '❌(' + (r.message||'실패') + ')'}`);
+        if (res.taxMail && !res.taxMail.success) lines.push('', '⚠️ 세무사 사무실 메일 실패: ' + (res.taxMail.message || '원인 불명') + ' — 따로 보내주세요');
         alert('월정산 확정 + 알림발송 결과\n\n' + lines.join('\n'));
         loadMonthlySettlement();
       })

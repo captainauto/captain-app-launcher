@@ -17,9 +17,12 @@
 
   // 화면에 보이는 버전 배지(V53.x). 배포 때마다 여기를 올리고, 이번 업데이트 요약 한 줄은
   // 서버의 Changelog.js에 추가한다 — 그러면 로그인 시 1회성 팝업으로 자동 안내된다.
-  const APP_VERSION = 'V55.28';
-  // 지사간 인센티브 "소개 지점" 체크란 목록 — 서버 Referral.js의 REFERRAL_BRANCHES_와 같아야 한다(목록 밖 값은 서버가 버린다)
-  const REFERRAL_BRANCHES_ = ['본사', '인천', '남양주', '강서', '의정부'];
+  const APP_VERSION = 'V55.30';
+  // 지점 목록 — 서버 Code.js BRANCHES_가 doGet에서 아래 [ ] 자리를 통째로 바꿔 끼운다(2026-10-11, 지점 목록 한 곳으로).
+  // 여기 적힌 값은 GitHub Pages 앱 셸처럼 서버가 끼워 넣지 못하는 경우의 예비값이다. 지점을 늘릴 땐 서버만 고치면 된다.
+  const APP_BRANCHES_ = /*@@BRANCHES@@*/[{"name":"본사","key":"","open":true},{"name":"인천","key":"인천","open":true},{"name":"남양주","key":"남양주","open":true},{"name":"강서","key":"강서","open":false},{"name":"의정부","key":"의정부","open":false}];
+  // 지사간 인센티브 "넘겨준 지점" 체크란 — 앱에 아직 안 연 지점도 고를 수 있다(서버도 같은 목록으로 검사)
+  const REFERRAL_BRANCHES_ = APP_BRANCHES_.map(function (b) { return b.name; });
   // 변경이력(APP_CHANGELOG)은 46KB나 돼서 서버(Changelog.js)로 옮겼다 — 팝업이나 "업데이트 내역" 탭을
   // 실제로 열 때만 getChangelog()로 가져온다. 새 버전 안내를 추가할 곳도 이제 Changelog.js다.
 
@@ -174,10 +177,33 @@
 
   function getBranch_() {
     if (!currentUser) return '';
-    if (currentUser.role === '인천관리자' || currentUser.role === '인천직원') return '인천';
-    if (currentUser.role === '남양주관리자' || currentUser.role === '남양주직원') return '남양주';
-    if (currentUser.role === '관리자') return adminBranchOverride;
-    return '';
+    // 'OO관리자'/'OO직원' → 'OO' (서버 Auth.js branchForRole_와 같은 규칙 — 서버가 최종으로 못박는다)
+    const role = String(currentUser.role || '').trim();
+    if (role === '관리자') return adminBranchOverride;
+    const m = role.match(/^(.*)(관리자|직원)$/);
+    return m ? m[1].trim() : '';
+  }
+
+  /** 지점 선택·역할 드롭다운을 지점 목록(APP_BRANCHES_)으로 채운다 — 앱에 연 지점만 */
+  function fillBranchSelects_() {
+    const opened = APP_BRANCHES_.filter(function (b) { return b.open && b.key; });
+    const bs = document.getElementById('branchSelect');
+    if (bs) {
+      const cur = bs.value;
+      bs.innerHTML = '<option value="">본사</option>' + opened.map(function (b) {
+        return '<option value="' + escapeHtml_(b.key) + '">' + escapeHtml_(b.name) + '지점</option>';
+      }).join('');
+      bs.value = cur || '';
+    }
+    const rs = document.getElementById('newUserRole');
+    if (rs) {
+      const cur = rs.value;
+      const roles = ['직원', '관리자'];
+      opened.forEach(function (b) { roles.push(b.key + '관리자'); });
+      opened.forEach(function (b) { roles.push(b.key + '직원'); });
+      rs.innerHTML = roles.map(function (r) { return '<option value="' + escapeHtml_(r) + '">' + escapeHtml_(r) + '</option>'; }).join('');
+      if (cur && roles.indexOf(cur) !== -1) rs.value = cur;
+    }
   }
 
   function wrapRunner_(t) {
@@ -1532,6 +1558,7 @@
   function enterApp() {
     document.getElementById('loginView').classList.add('hidden');
     setReferrer_('f', ''); setReferrer_('a', ''); // 소개 지점 체크란(자기 지점은 빼고 그린다)
+    fillBranchSelects_(); // 지점 선택·역할 드롭다운(지점 목록 한 곳에서)
     const isAdmin = isAdminRole_(currentUser.role);
     if (isAdmin) {
       document.getElementById('adminView').classList.remove('hidden');
@@ -1591,6 +1618,8 @@
         locationsCache = Array.isArray(res.locations) ? res.locations : [];
         priceListCache = Array.isArray(res.prices) ? res.prices : [];
       })
+      // 실패를 모르고 수정 저장하면 자재 기록이 비어 재고가 어긋난다(2026-10-11 점검) — 알린다
+      .withFailureHandler(function (e) { toast('⚠️ 자재 목록을 불러오지 못했습니다. 새로고침해주세요 (' + e.message + ')'); })
       .getFormBundle();
   }
 
@@ -2281,7 +2310,10 @@
           toast(res.message || '삭제할 수 없습니다');
           return;
         }
-        toast('삭제되었습니다');
+        let msg = '삭제되었습니다';
+        if (res && res.stockRestored) msg += ' · 재고 ' + res.stockRestored + '건 되돌림';
+        if (res && res.stockSkipped && res.stockSkipped.length) msg += ' · 재고 목록이 바뀌어 못 되돌린 자재: ' + res.stockSkipped.join(', ');
+        toast(msg);
         exitEditMode(prefix);
         clearFormFields_(prefix);
         if (isAdminRole_(currentUser.role)) { loadMyRecentAdmin(); loadAllEntries(); renderCalendar(); }
