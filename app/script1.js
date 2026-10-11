@@ -17,7 +17,7 @@
 
   // 화면에 보이는 버전 배지(V53.x). 배포 때마다 여기를 올리고, 이번 업데이트 요약 한 줄은
   // 서버의 Changelog.js에 추가한다 — 그러면 로그인 시 1회성 팝업으로 자동 안내된다.
-  const APP_VERSION = 'V55.30';
+  const APP_VERSION = 'V55.31';
   // 지점 목록 — 서버 Code.js BRANCHES_가 doGet에서 아래 [ ] 자리를 통째로 바꿔 끼운다(2026-10-11, 지점 목록 한 곳으로).
   // 여기 적힌 값은 GitHub Pages 앱 셸처럼 서버가 끼워 넣지 못하는 경우의 예비값이다. 지점을 늘릴 땐 서버만 고치면 된다.
   const APP_BRANCHES_ = /*@@BRANCHES@@*/[{"name":"본사","key":"","open":true},{"name":"인천","key":"인천","open":true},{"name":"남양주","key":"남양주","open":true},{"name":"강서","key":"강서","open":false},{"name":"의정부","key":"의정부","open":false}];
@@ -2497,14 +2497,15 @@
       (list || []).forEach(function (m) {
         if (!m.fromStock || !m.rowIndex || !m.location || m.location === '현장구매') return;
         const k = m.rowIndex + '|' + m.location;
-        if (!map[k]) map[k] = { rowIndex: m.rowIndex, location: m.location, delta: 0 };
+        // 이름도 같이 보낸다 — 재고 행 번호가 밀렸으면 서버가 이름으로 다시 찾는다(Stock.js resolveStockRow_)
+        if (!map[k]) map[k] = { rowIndex: m.rowIndex, location: m.location, name: m.name, major: m.spec || '', delta: 0 };
         map[k].delta += sign * (Number(m.qty) || 0);
       });
     };
     add(oldLines, -1);
     add(newLines, 1);
     return Object.keys(map).map(k => map[k]).filter(v => v.delta !== 0)
-      .map(v => ({ rowIndex: v.rowIndex, location: v.location, qty: v.delta }));
+      .map(v => ({ rowIndex: v.rowIndex, location: v.location, qty: v.delta, name: v.name, major: v.major }));
   }
 
   function doSubmit(prefix) {
@@ -2601,8 +2602,17 @@
           if (confirm(res.message + '\n\n실수로 두 번 저장된 것이면 "취소"를 누르세요.\n같은 현장의 별도 건이라면 "확인"을 눌러 그대로 등록합니다.')) {
             if (submitBtn) submitBtn.disabled = true;
             sendSave_(true);
+            return;
           }
-          return;
+          // 현장 네트워크가 느려 첫 저장은 서버에 들어갔는데 화면엔 오류가 떠서 다시 누른 경우,
+          // 그냥 끝내면 남아 있는 첫 기록에 재고 차감·사진·사업자등록증이 하나도 안 붙었다(2026-10-11 점검).
+          // 그 기록에 이번에 담은 것들을 붙일지 한 번 더 묻는다.
+          if (!res.rowId || !confirm('이미 저장돼 있는 그 기록에, 이번에 담은 자재(재고 차감)·사진·사업자등록증·문서 연결을 붙일까요?\n\n' +
+              '앞서 저장할 때 오류가 떠서 다시 누른 경우라면 "확인"을 누르세요.\n그 기록에 이미 다 붙어 있다면 "취소"를 누르세요.')) {
+            return;
+          }
+          if (submitBtn) submitBtn.disabled = true;
+          res = { success: true, rowIndex: res.rowIndex, rowId: res.rowId }; // 아래 "저장 성공" 흐름을 그 기록으로 이어간다
         }
         if (isEditing && res && res.success === false) {
           unlockSubmitBtn_();
