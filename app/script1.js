@@ -17,7 +17,9 @@
 
   // 화면에 보이는 버전 배지(V53.x). 배포 때마다 여기를 올리고, 이번 업데이트 요약 한 줄은
   // 서버의 Changelog.js에 추가한다 — 그러면 로그인 시 1회성 팝업으로 자동 안내된다.
-  const APP_VERSION = 'V55.26';
+  const APP_VERSION = 'V55.27';
+  // 지사간 인센티브 "소개 지점" 체크란 목록 — 서버 Referral.js의 REFERRAL_BRANCHES_와 같아야 한다(목록 밖 값은 서버가 버린다)
+  const REFERRAL_BRANCHES_ = ['본사', '인천', '남양주', '강서', '의정부'];
   // 변경이력(APP_CHANGELOG)은 46KB나 돼서 서버(Changelog.js)로 옮겼다 — 팝업이나 "업데이트 내역" 탭을
   // 실제로 열 때만 getChangelog()로 가져온다. 새 버전 안내를 추가할 곳도 이제 Changelog.js다.
 
@@ -274,6 +276,8 @@
 
   function switchBranch(branch) {
     adminBranchOverride = branch || '';
+    const refEl = document.getElementById('a_referrer');
+    setReferrer_('a', refEl ? refEl.value : ''); // 지점이 바뀌면 "자기 지점" 칸이 달라진다
     toast(branch ? branch + '지점 장부로 전환했습니다' : '본사 장부로 전환했습니다');
     // 탭별로 "이미 불러왔다" 표시를 지워서, 다른 탭을 열면 새 지점 데이터로 다시 불러오게 한다.
     // 지금 보고 있는 탭만 즉시 새로고침한다(예전엔 안 보이는 탭 것까지 전부 다시 불러왔다 — 2026-08-02).
@@ -1527,6 +1531,7 @@
 
   function enterApp() {
     document.getElementById('loginView').classList.add('hidden');
+    setReferrer_('f', ''); setReferrer_('a', ''); // 소개 지점 체크란(자기 지점은 빼고 그린다)
     const isAdmin = isAdminRole_(currentUser.role);
     if (isAdmin) {
       document.getElementById('adminView').classList.remove('hidden');
@@ -2124,6 +2129,9 @@
     const confEl = g('confirmed'); if (confEl && r.confirmed) confEl.value = r.confirmed;
     g('note').value = r.note || '';
     g('source').value = r.source || '';
+    // 소개지점을 안 실어 보내는 목록에서 연 기록이면 "모름"으로 두고, 저장 때 장부 값을 덮어쓰지 않는다
+    editState.refUnknown = (r.referrer === undefined || r.referrer === null);
+    setReferrer_(prefix, editState.refUnknown ? '' : r.referrer);
 
     matLines = []; extraLines = [];
     renderMatLines(); renderExtraLines();
@@ -2204,10 +2212,35 @@
     }
   }
 
+  // ---- 소개 지점(지사간 인센티브, 2026-11-01 시행) ----
+  // 다른 지점에서 넘겨받은 일이면 그 지점을 체크한다 → 장부 T열. 정산은 서버 Referral.js.
+  // 목록 REFERRAL_BRANCHES_는 파일 맨 위(APP_VERSION 옆)에 있다 — 자동 로그인이 이 줄보다 먼저 돌 수 있어서.
+
+  function setReferrer_(prefix, value) {
+    const input = document.getElementById(prefix + '_referrer');
+    const box = document.getElementById(prefix + '_referrerChips');
+    if (!input || !box) return;
+    const own = getBranch_() || '본사';
+    const v = (value && value !== own) ? value : '';
+    input.value = v;
+    box.innerHTML = REFERRAL_BRANCHES_.filter(function (b) { return b !== own; }).map(function (b) {
+      const on = (b === v);
+      return '<button type="button" class="btn-outline" style="padding:6px 14px;font-size:13px;margin:0 6px 6px 0;' +
+        (on ? 'background:#1d4ed8;color:#fff;border-color:#1d4ed8;font-weight:700;' : '') +
+        '" onclick="toggleReferrer(\'' + prefix + '\',\'' + b + '\')">' + (on ? '✓ ' : '') + b + '</button>';
+    }).join('');
+  }
+
+  function toggleReferrer(prefix, b) {
+    const input = document.getElementById(prefix + '_referrer');
+    setReferrer_(prefix, input && input.value === b ? '' : b);
+  }
+
   function clearFormFields_(prefix) {
     ['address','content','amount','eAmount','note','source','cost','margin'].forEach(id => {
       const el = document.getElementById(prefix + '_' + id); if (el) el.value = '';
     });
+    setReferrer_(prefix, '');
     const vatEl = document.getElementById(prefix + '_vatSeparate'); if (vatEl) vatEl.checked = false;
     resetMatExtra();
   }
@@ -2476,6 +2509,7 @@
       confirmed: g('confirmed').value,
       note: g('note').value,
       source: g('source').value,
+      referrer: (isEditing && editState.refUnknown && !g('referrer').value) ? undefined : g('referrer').value,
       cost: numVal(prefix + '_cost'),
       costNote: buildCostNote(),
       subtitleCost: (matLines.length || extraLines.length) ? buildMaterialDTotal() : undefined,

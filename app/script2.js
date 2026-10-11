@@ -761,7 +761,7 @@
 
   function showAdminTab(tab) {
     scrollTabIntoView_(document.getElementById('tabBtn-' + tab));
-    ['dash','input','cal','users','stock','doorlock','vehicle','incentive','stats','search','album','docs','expense','blogreq','changelog'].forEach(t => {
+    ['dash','input','cal','users','stock','doorlock','vehicle','incentive','referral','stats','search','album','docs','expense','blogreq','changelog'].forEach(t => {
       const panel = document.getElementById('adminTab-' + t);
       const btn = document.getElementById('tabBtn-' + t);
       if (panel) panel.classList.toggle('hidden', t !== tab);
@@ -779,6 +779,7 @@
     if (tab === 'doorlock') loadDoorlockCatalogTab();
     if (tab === 'dash') { loadDashboard(); loadAdminTodos(); } // 할 일은 대시보드 요청 뒤에 보낸다(첫 화면 숫자가 먼저)
     if (tab === 'incentive') { loadIncentive(); loadMonthlySettlement(); }
+    if (tab === 'referral') loadReferralSettlement();
     if (tab === 'stats') { loadStatistics(); loadPnL(); }
     if (tab === 'album') initAlbumTab();
     // 네이버 연동·Gemini/OpenAI 키 상태 조회는 그 카드들을 뺀 2026-09-16부터 부르지 않는다(블로그 흐름 통일)
@@ -792,6 +793,83 @@
       const sd = document.getElementById('sortDate');
       if (sd && !sd.value) sd.valueAsDate = new Date();
     }
+  }
+
+  // ====================== 지사간 인센티브 탭 (서버 Referral.js) ======================
+  function loadReferralSettlement() {
+    const monthEl = document.getElementById('referralMonth');
+    if (!monthEl.value) {
+      const d = new Date();
+      monthEl.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    }
+    const loading = '<tr><td colspan="8" class="muted">불러오는 중...</td></tr>';
+    ['referralPairBody', 'referralBranchBody', 'referralRowBody'].forEach(function (id) {
+      document.getElementById(id).innerHTML = loading;
+    });
+    document.getElementById('referralSendResult').textContent = '';
+    RUN()
+      .withSuccessHandler(renderReferralSettlement_)
+      .withFailureHandler(function (e) {
+        document.getElementById('referralPairBody').innerHTML = '<tr><td colspan="5" class="muted">오류: ' + escapeHtml_(e.message) + '</td></tr>';
+        document.getElementById('referralBranchBody').innerHTML = '';
+        document.getElementById('referralRowBody').innerHTML = '';
+      })
+      .getReferralSettlement(monthEl.value);
+  }
+
+  function renderReferralSettlement_(d) {
+    const notice = document.getElementById('referralNotice');
+    notice.textContent = d.beforeStart ? ('지사간 인센티브는 ' + d.start + ' 건부터 적용됩니다. 이 달은 정산 대상이 아닙니다.') : '';
+
+    const pairs = (d.pairs || []);
+    document.getElementById('referralPairBody').innerHTML = pairs.length ? pairs.map(function (p) {
+      const detail = escapeHtml_(p.a) + '→' + escapeHtml_(p.b) + ' ' + fmtMoney(p.aToB) + ' / ' +
+                     escapeHtml_(p.b) + '→' + escapeHtml_(p.a) + ' ' + fmtMoney(p.bToA);
+      if (!p.net) {
+        return '<tr><td>' + escapeHtml_(p.a) + '</td><td>⇄</td><td>' + escapeHtml_(p.b) + '</td><td class="muted">0원 (서로 같음)</td><td class="muted" style="font-size:12px;">' + detail + '</td></tr>';
+      }
+      return '<tr><td><b>' + escapeHtml_(p.payer) + '</b></td><td>→</td><td><b>' + escapeHtml_(p.receiver) + '</b></td>' +
+        '<td style="white-space:nowrap;font-weight:700;color:#1d4ed8;">' + fmtMoney(p.net) + '</td>' +
+        '<td class="muted" style="font-size:12px;">' + detail + '</td></tr>';
+    }).join('') : '<tr><td colspan="5" class="muted">이 달은 넘겨받은 건이 없습니다.</td></tr>';
+
+    const per = (d.perBranch || []);
+    document.getElementById('referralBranchBody').innerHTML = per.length ? per.map(function (b) {
+      const diff = b.toReceive - b.toPay;
+      return '<tr><td><b>' + escapeHtml_(b.branch) + '</b></td><td style="white-space:nowrap;">' + fmtMoney(b.toPay) + '</td>' +
+        '<td style="white-space:nowrap;">' + fmtMoney(b.toReceive) + '</td>' +
+        '<td style="white-space:nowrap;font-weight:700;color:' + (diff >= 0 ? '#047857' : '#d62828') + ';">' +
+        (diff > 0 ? '+' : diff < 0 ? '−' : '') + fmtMoney(Math.abs(diff)) + '</td></tr>';
+    }).join('') : '<tr><td colspan="4" class="muted">-</td></tr>';
+
+    const rows = (d.rows || []);
+    document.getElementById('referralRowBody').innerHTML = rows.length ? rows.map(function (r) {
+      return '<tr><td style="white-space:nowrap;">' + escapeHtml_(r.date) + '</td>' +
+        '<td>' + escapeHtml_(r.executor) + '</td><td>' + escapeHtml_(r.referrer) + '</td>' +
+        truncTd_(r.address, 200) + truncTd_(r.content, 150) +
+        '<td style="white-space:nowrap;">' + fmtMoney(r.margin) + '</td>' +
+        '<td style="white-space:nowrap;font-weight:700;">' + fmtMoney(r.incentive) + '</td></tr>';
+    }).join('') : '<tr><td colspan="7" class="muted">넘겨받은 건이 없습니다.</td></tr>';
+
+    // 알림 발송은 본사 관리자만
+    document.getElementById('referralSendWrap').classList.toggle('hidden', !(currentUser && currentUser.role === '관리자'));
+  }
+
+  function sendReferralNotice() {
+    const month = document.getElementById('referralMonth').value;
+    if (!month) { toast('월을 먼저 고르세요'); return; }
+    if (!confirm(month + ' 지사간 인센티브 정산표를 관련 지점 관리자에게 보낼까요?')) return;
+    const out = document.getElementById('referralSendResult');
+    out.textContent = '보내는 중...';
+    RUN()
+      .withSuccessHandler(function (res) {
+        if (!res.results || !res.results.length) { out.textContent = res.message || '보낼 내용이 없습니다.'; return; }
+        out.innerHTML = res.results.map(function (r) {
+          return (r.success ? '✅ ' : '⚠️ ') + escapeHtml_(r.branch) + ' — ' + escapeHtml_(r.message || '');
+        }).join('<br>');
+      })
+      .withFailureHandler(function (e) { out.textContent = '오류: ' + e.message; })
+      .sendReferralSettlementNotice(month);
   }
 
   // ====================== 통계 탭 (구 정산/월별평균/출처별/결재형태 시트를 대체) ======================

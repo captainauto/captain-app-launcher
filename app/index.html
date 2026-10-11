@@ -478,6 +478,9 @@
           <input id="f_source" placeholder="예: 숨고 / 관리 / 당근" autocomplete="off" oninput="onSourceInput('f')" onfocus="showSourceDropdown('f')" />
           <div id="f_sourceDrop" class="ac-dropdown hidden"></div>
         </div>
+        <label>넘겨준 지점 <span class="muted" style="font-size:12px;font-weight:400;">— 다른 지점에서 넘겨받은 일이면 체크 (마진 20%를 그 지점에 지급)</span></label>
+        <input type="hidden" id="f_referrer" />
+        <div id="f_referrerChips" style="margin-top:4px;"></div>
 
         <div style="margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fafbfc;">
           <strong style="font-size:13px;">견적서/거래명세서 연결 (선택)</strong>
@@ -738,6 +741,7 @@
         <button class="tab-btn tab-btn-primary" id="tabBtn-input" onclick="showAdminTab('input')">기록 입력</button>
         <button class="tab-btn tab-btn-primary" id="tabBtn-cal" onclick="showAdminTab('cal')">캘린더</button>
         <button class="tab-btn tab-btn-primary" id="tabBtn-incentive" onclick="showAdminTab('incentive')">인센티브 관리</button>
+        <button class="tab-btn" id="tabBtn-referral" onclick="showAdminTab('referral')">💱 지사간 인센티브</button>
         <button class="tab-btn" id="tabBtn-search" onclick="showAdminTab('search')">장부 검색</button>
         <button class="tab-btn" id="tabBtn-album" onclick="showAdminTab('album')">공유 앨범</button>
         <button class="tab-btn" id="tabBtn-docs" onclick="showAdminTab('docs')">견적서·거래명세서 관리</button>
@@ -997,6 +1001,9 @@
             <input id="a_source" placeholder="예: 숨고 / 관리 / 당근" autocomplete="off" oninput="onSourceInput('a')" onfocus="showSourceDropdown('a')" />
             <div id="a_sourceDrop" class="ac-dropdown hidden"></div>
           </div>
+          <label>넘겨준 지점 <span class="muted" style="font-size:12px;font-weight:400;">— 다른 지점에서 넘겨받은 일이면 체크 (마진 20%를 그 지점에 지급)</span></label>
+          <input type="hidden" id="a_referrer" />
+          <div id="a_referrerChips" style="margin-top:4px;"></div>
 
           <div style="margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fafbfc;">
             <strong style="font-size:13px;">견적서/거래명세서 연결 (선택)</strong>
@@ -1503,6 +1510,47 @@
           </div>
           <div style="margin-top:10px;">
             <button class="btn-primary" onclick="confirmMonthlySettlementBtn()">정산 확정 및 알림발송</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="adminTab-referral" class="hidden">
+        <div class="card">
+          <strong>지사간 인센티브 정산</strong>
+          <p class="muted" style="margin-top:4px;">다른 지점에서 넘겨받아 시공한 건은 그 건 마진의 20%를 넘겨준 지점에 드립니다. 기록 입력의 <b>넘겨준 지점</b> 체크로 잡히고, 장부 날짜 기준 <b>한 달 단위</b>로 정리합니다(무상·마진 없는 건 제외). 서로 주고받을 돈은 상계해서 한 줄로 정리하고, <b>매월 1일 아침에 지난달 정산표가 각 지점 관리자에게 자동으로 갑니다.</b> 2026년 11월 1일 건부터 적용됩니다.</p>
+          <div class="row" style="margin-top:8px;max-width:420px;">
+            <input id="referralMonth" type="month" />
+            <button class="btn-outline" onclick="loadReferralSettlement()">조회</button>
+          </div>
+          <div id="referralNotice" class="muted" style="margin-top:8px;"></div>
+
+          <h4 style="margin:16px 0 6px;">① 최종 정산 — 누가 누구에게 얼마</h4>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>보내는 지점</th><th></th><th>받는 지점</th><th>보낼 금액</th><th>상계 전 내역</th></tr></thead>
+              <tbody id="referralPairBody"></tbody>
+            </table>
+          </div>
+
+          <h4 style="margin:16px 0 6px;">② 지점별 합계</h4>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>지점</th><th>보낼 돈</th><th>받을 돈</th><th>차액</th></tr></thead>
+              <tbody id="referralBranchBody"></tbody>
+            </table>
+          </div>
+
+          <h4 style="margin:16px 0 6px;">③ 건별 내역</h4>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>날짜</th><th>시공 지점</th><th>넘겨준 지점</th><th>주소</th><th>내용</th><th>마진</th><th>인센티브(20%)</th></tr></thead>
+              <tbody id="referralRowBody"></tbody>
+            </table>
+          </div>
+
+          <div id="referralSendWrap" class="hidden" style="margin-top:12px;">
+            <button class="btn-primary" onclick="sendReferralNotice()">각 지점에 정산표 지금 다시 보내기</button>
+            <div id="referralSendResult" class="muted" style="margin-top:6px;"></div>
           </div>
         </div>
       </div>
@@ -2183,9 +2231,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V55.26"></script>
-<script src="script2.js?v=V55.26"></script>
-<script src="script3.js?v=V55.26"></script>
+<script src="script1.js?v=V55.27"></script>
+<script src="script2.js?v=V55.27"></script>
+<script src="script3.js?v=V55.27"></script>
 </body>
 </html>
 
