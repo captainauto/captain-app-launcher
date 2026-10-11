@@ -418,7 +418,7 @@
     if (kindSel && !kindSel.options.length) {
       kindSel.innerHTML = (d.maintKinds || []).map(k => '<option>' + escapeHtml_(k) + '</option>').join('');
     }
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayStr_(); // toISOString은 UTC라 오전 9시 전엔 어제가 됐다(2026-10-11)
     ['ev_fl_date','ev_mt_date'].forEach(function (id) {
       const el = document.getElementById(id);
       if (el && !el.value) el.value = today;
@@ -791,7 +791,7 @@
     if (tab === 'changelog') renderChangelogTab();
     if (tab === 'cal') {
       const sd = document.getElementById('sortDate');
-      if (sd && !sd.value) sd.valueAsDate = new Date();
+      if (sd && !sd.value) sd.value = todayStr_(); // valueAsDate는 UTC라 오전 9시 전엔 어제가 됐다(2026-10-11)
     }
   }
 
@@ -1620,7 +1620,7 @@
   let pendingIncentiveEdits_ = {}; // rowIndex -> {ratePercent, subtitleCost} — "작성완료" 누르기 전까지 화면에만 보관
   function loadIncentive() {
     const dateEl = document.getElementById('incentiveDate');
-    if (dateEl && !dateEl.value) dateEl.valueAsDate = new Date();
+    if (dateEl && !dateEl.value) dateEl.value = todayStr_(); // valueAsDate는 UTC라 오전 9시 전엔 어제가 됐다(2026-10-11)
     const dateStr = dateEl ? dateEl.value : '';
     const body = document.getElementById('incentiveTableBody');
     if (body) body.innerHTML = '<tr><td colspan="10" class="muted" style="padding:12px;">불러오는 중...</td></tr>';
@@ -1665,7 +1665,7 @@
   function openIncentiveModal(r) {
     document.getElementById('inc_rowIndex').value = r.rowIndex;
     document.getElementById('inc_info').innerHTML =
-      `${r.date} · ${r.agent||''} · ${r.address||''}<br>부제(F): <strong>${fmtMoney(r.subtitle)}</strong> · 원가(L): ${fmtMoney(r.price)}`;
+      `${escapeHtml_(r.date)} · ${escapeHtml_(r.agent||'')} · ${escapeHtml_(r.address||'')}<br>부제(F): <strong>${fmtMoney(r.subtitle)}</strong> · 원가(L): ${fmtMoney(r.price)}`;
     const curRate = (r.incentiveRate === '' || r.incentiveRate == null) ? '' : Math.round(Number(r.incentiveRate) * 100);
     document.getElementById('inc_rate').value = curRate;
     const curQ = (r.subtitleCost === '' || r.subtitleCost == null) ? r.price : r.subtitleCost;
@@ -1748,7 +1748,7 @@
     renderDocItems();
     document.getElementById('docModalTitle').textContent = kind === 'estimate' ? '견적서 작성' : '거래명세서 작성';
     document.getElementById('doc_client').value = '';
-    document.getElementById('doc_date').valueAsDate = new Date();
+    document.getElementById('doc_date').value = todayStr_(); // valueAsDate는 UTC라 오전 9시 전엔 어제가 됐다(2026-10-11)
     document.getElementById('docResult').innerHTML = '';
     document.getElementById('doc_emailTo').value = '';
     document.getElementById('docEmailResult').innerHTML = '';
@@ -4058,10 +4058,10 @@
         if (r.alsoOwner && !s.email) s = (status && status.owner) || s;
         const ph = '알림 받을 이메일 주소';
         return `<div class="row" style="align-items:center;margin-top:6px;">
-          <span style="flex:1;">${r.label}</span>
-          <input id="emailNotify_${i}" value="${s.email || ''}" placeholder="${ph}" style="flex:2;" />
+          <span style="flex:1;">${escapeHtml_(r.label)}</span>
+          <input id="emailNotify_${i}" value="${escapeHtml_(s.email || '')}" placeholder="${ph}" style="flex:2;" />
           <button class="btn-outline" onclick="saveEmailNotify(${i}, this)">저장</button>
-          ${s.linked ? `<button class="btn-outline" onclick="testEmailNotify('${r.key}', this)" style="margin-left:4px;">테스트</button>` : ''}
+          ${s.linked ? `<button class="btn-outline" onclick="testEmailNotify(emailNotifyRows[${i}].key, this)" style="margin-left:4px;">테스트</button>` : ''}
         </div>`;
       }).join('');
     }
@@ -4245,7 +4245,7 @@
             // 정비내역은 달을 비워둔 채로 시작한다 — 이번 달에 정비가 없는 게 보통이라
             // 이번 달로 걸어두면 처음 열었을 때 늘 비어 보인다. 이력 전체를 보여주는 게 맞다.
             const mtDateEl = document.getElementById('mt_date');
-            if (mtDateEl && !mtDateEl.value) mtDateEl.valueAsDate = new Date();
+            if (mtDateEl && !mtDateEl.value) mtDateEl.value = todayStr_(); // valueAsDate는 UTC라 오전 9시 전엔 어제가 됐다(2026-10-11)
             fillMaintKinds_();
             loadFuelLogs();
             loadVehicleSummary();
@@ -4285,7 +4285,7 @@
   function completeIntegratedLedger() {
     const modal = document.getElementById('integratedReviewModal');
     const dateEl = document.getElementById('intReviewDate');
-    if (dateEl && !dateEl.value) dateEl.valueAsDate = new Date();
+    if (dateEl && !dateEl.value) dateEl.value = todayStr_(); // valueAsDate는 UTC라 오전 9시 전엔 어제가 됐다(2026-10-11)
     const dateStr = dateEl ? dateEl.value : '';
     modal.classList.remove('hidden');
     document.getElementById('intReviewSummary').textContent = '출장자순 정렬 중...';

@@ -17,7 +17,7 @@
 
   // 화면에 보이는 버전 배지(V53.x). 배포 때마다 여기를 올리고, 이번 업데이트 요약 한 줄은
   // 서버의 Changelog.js에 추가한다 — 그러면 로그인 시 1회성 팝업으로 자동 안내된다.
-  const APP_VERSION = 'V55.27';
+  const APP_VERSION = 'V55.28';
   // 지사간 인센티브 "소개 지점" 체크란 목록 — 서버 Referral.js의 REFERRAL_BRANCHES_와 같아야 한다(목록 밖 값은 서버가 버린다)
   const REFERRAL_BRANCHES_ = ['본사', '인천', '남양주', '강서', '의정부'];
   // 변경이력(APP_CHANGELOG)은 46KB나 돼서 서버(Changelog.js)로 옮겼다 — 팝업이나 "업데이트 내역" 탭을
@@ -656,7 +656,7 @@
     } else if (saved) {
       localStorage.removeItem('currentUser');
     }
-    document.getElementById('f_date').valueAsDate = new Date();
+    document.getElementById('f_date').value = todayStr_(); // valueAsDate는 UTC라 오전 9시 전엔 어제가 됐다(2026-10-11)
   };
 
   // 안드로이드 뒤로가기 버튼을 누르면 앱을 벗어나며 새로고침되어 로그인화면으로 튕기는 문제 방지.
@@ -1367,7 +1367,7 @@
       ['f_date', 'a_date'].forEach(function (id) {
         if (dateAutoSetFlags_[id]) {
           const el = document.getElementById(id);
-          if (el) el.valueAsDate = new Date();
+          if (el) el.value = todayStr_(); // valueAsDate는 UTC라 오전 9시 전엔 어제가 됐다(2026-10-11)
         }
       });
     }
@@ -1544,7 +1544,7 @@
         const el = document.getElementById(id);
         if (el) el.classList.toggle('hidden', currentUser.role !== '관리자');
       });
-      document.getElementById('a_date').valueAsDate = new Date();
+      document.getElementById('a_date').value = todayStr_(); // valueAsDate는 UTC라 오전 9시 전엔 어제가 됐다(2026-10-11)
       // 처음 보이는 화면(대시보드)용 요청을 가장 먼저 보내서, 다른 탭용 요청들과 서버 실행 자원을
       // 덜 다투게 한다. showAdminTab('dash')가 내부에서 loadDashboard()를 호출하는데, 예전엔 바로
       // 아래서 loadDashboard()를 한 번 더 불러서 대시보드 관련 요청 3개(대시보드/세금계산서/현금미수령)가
