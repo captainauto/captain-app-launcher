@@ -1910,6 +1910,10 @@
            V53.22에서 넣었지만 날짜·출장자 줄 끝 11px 회색 배지라 눈에 안 띄었다. -->
       <div id="bizregPayStatus" class="hidden" style="margin-bottom:10px;padding:10px 12px;border-radius:8px;font-size:15px;font-weight:700;text-align:center;"></div>
 
+      <!-- 이 장부 건에 연결된 견적서/거래명세서 — 계산서 끊기 전에 품목·금액을 대조하려고(2026-10-16 사장님 요청) -->
+      <a id="bizregDocLinkBtn" class="btn-outline hidden" target="_blank" rel="noopener"
+         style="display:block;margin-bottom:10px;padding:10px;text-align:center;text-decoration:none;font-weight:600;"></a>
+
       <div id="bizregLedgerInfo" class="hidden" style="margin-bottom:12px;padding:10px;border:1px dashed var(--border);border-radius:8px;background:#fafbfc;">
         <div class="muted" style="font-size:12px;margin-bottom:6px;" id="bizregLedgerMeta"></div>
         <div class="row" style="align-items:center;margin-top:4px;">
@@ -2227,9 +2231,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V55.36"></script>
-<script src="script2.js?v=V55.36"></script>
-<script src="script3.js?v=V55.36"></script>
+<script src="script1.js?v=V55.37"></script>
+<script src="script2.js?v=V55.37"></script>
+<script src="script3.js?v=V55.37"></script>
 </body>
 </html>
 

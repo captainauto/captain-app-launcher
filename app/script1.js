@@ -17,7 +17,7 @@
 
   // 화면에 보이는 버전 배지(V53.x). 배포 때마다 여기를 올리고, 이번 업데이트 요약 한 줄은
   // 서버의 Changelog.js에 추가한다 — 그러면 로그인 시 1회성 팝업으로 자동 안내된다.
-  const APP_VERSION = 'V55.36';
+  const APP_VERSION = 'V55.37';
   // 지점 목록 — 서버 Code.js BRANCHES_가 doGet에서 아래 [ ] 자리를 통째로 바꿔 끼운다(2026-10-11, 지점 목록 한 곳으로).
   // 여기 적힌 값은 GitHub Pages 앱 셸처럼 서버가 끼워 넣지 못하는 경우의 예비값이다. 지점을 늘릴 땐 서버만 고치면 된다.
   const APP_BRANCHES_ = /*@@BRANCHES@@*/[{"name":"본사","key":"","open":true},{"name":"인천","key":"인천","open":true},{"name":"남양주","key":"남양주","open":true},{"name":"강서","key":"강서","open":false},{"name":"의정부","key":"의정부","open":false}];
@@ -754,6 +754,22 @@
       // rowIndex만 넘어온 옛 호출 방식 — 장부 정보가 없으니 입금 여부도 띄울 게 없다
       if (ledgerInfoEl) ledgerInfoEl.classList.add('hidden');
       if (payStatusEl) payStatusEl.classList.add('hidden');
+    }
+
+    // 연결된 견적서·거래명세서가 있으면 열어볼 버튼을 띄운다. 없으면 버튼 자체를 숨긴다.
+    const docBtn = document.getElementById('bizregDocLinkBtn');
+    if (docBtn) {
+      docBtn.classList.add('hidden');
+      RUN()
+        .withSuccessHandler(function (link) {
+          if (bizregState.rowIndex !== rowIndex || !link || !link.fileId) return;
+          docBtn.href = 'https://drive.google.com/file/d/' + encodeURIComponent(link.fileId) + '/view';
+          docBtn.textContent = '📄 연결된 ' + (link.kind === 'estimate' ? '견적서' : '거래명세서') +
+            ' 보기' + (link.client ? ' — ' + link.client : '');
+          docBtn.classList.remove('hidden');
+        })
+        .withFailureHandler(function () {})
+        .getDocLinkForRow(rowIndex);
     }
 
     RUN()
@@ -1963,7 +1979,7 @@
     // 입력값을 그대로 쓴다. priceType은 세금계산서 유무 표시 + 자재단가 마스터 저장 시 세액/금액
     // 역산(공급가×1.1)에만 쓰인다.
     const dPrice = inputPrice;
-    maybeSyncPriceEntry_(name, inputPrice, priceType);
+    maybeSyncPriceEntry_(name, inputPrice, priceType, source);
     matLines.push({ name: name, spec: '', qty: qty, price: inputPrice, fromStock: false, rowIndex: null, location: '현장구매', dPrice: dPrice, buyer: source, priceType: priceType });
     nameEl.value = ''; qtyEl.value = 1;
     if (priceEl) priceEl.value = '';
@@ -1977,10 +1993,23 @@
    * 다르면, 자재단가의 기존 값도 같이 고칠지 물어본다. 아니오를 누르면 이번 건에만 새 단가를 쓰고
    * 마스터 데이터(자재단가)는 그대로 둔다.
    */
-  function maybeSyncPriceEntry_(name, inputPrice, priceType) {
+  /**
+   * 자재단가 목록에서 이름(+매입처)이 같은 항목. 매입처를 비웠으면 이름만 본다.
+   * 같은 이름이 매입처별로 여러 줄 있을 수 있어서(실리콘: 철물점/다이소) 매입처까지 맞춰야 엉뚱한 줄을 고치지 않는다.
+   */
+  function findPriceEntry_(name, buyer) {
+    const n = String(name || '').trim().toLowerCase();
+    const b = String(buyer || '').trim();
+    if (!n) return null;
+    return priceListCache.find(function (p) {
+      return String(p.name || '').trim().toLowerCase() === n && (!b || String(p.buyer || '').trim() === b);
+    }) || null;
+  }
+
+  function maybeSyncPriceEntry_(name, inputPrice, priceType, buyer) {
     if (!inputPrice) return;
     if (!isAdminRole_(currentUser.role)) return; // 마스터 단가는 관리자만 고친다(서버도 막는다)
-    const existing = priceListCache.find(function (p) { return String(p.name || '').trim().toLowerCase() === name.toLowerCase(); });
+    const existing = findPriceEntry_(name, buyer);
     if (!existing || !existing.rowIndex) return;
     const existingSupply = Number(existing.supply) || 0;
     if (!existingSupply || existingSupply === inputPrice) return;
@@ -2584,9 +2613,12 @@
           (Number(o.price) || 0) === (Number(m.price) || 0);
       });
     };
-    const customs = isEditing
+    // 자재단가에 이미 있는 자재(같은 이름+같은 매입처)는 저장할 때 다시 "자재단가에 등록할까요?"를 묻지 않는다(2026-10-16 사장님 요청).
+    // 목록에서 골라 그대로 쓴 건 등록할 게 없고, 단가를 바꿨으면 담을 때(maybeSyncPriceEntry_) 이미 기존 단가를 고칠지 물었다.
+    // 처음 보는 자재나 새 매입처만 팝업에 올린다.
+    const customs = (isEditing
       ? getCustomMaterials().filter(function (m) { return !isUnchangedCustom_(m); })
-      : getCustomMaterials();
+      : getCustomMaterials()).filter(function (m) { return !findPriceEntry_(m.name, m.buyer); });
 
     const finalize = function () {
       // 수정 중이면 "수정 시작 시점의 자재 목록"과 지금 목록을 비교해 차이만큼만 재고 반영.

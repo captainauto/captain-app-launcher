@@ -3871,7 +3871,8 @@
     RUN()
       .withSuccessHandler(function (res) {
         if (res && res.success) {
-          toast(res.sorted != null ? (res.sorted + '건 정렬 완료 ✅') : (res.message || '정렬 완료'));
+          const movedMsg = (res.moved && res.moved.length) ? (' · 늦게 들어온 기록 ' + res.moved.length + '건 제자리로') : '';
+          toast((res.sorted != null ? (res.sorted + '건 정렬 완료 ✅') : (res.message || '정렬 완료')) + movedMsg);
           loadAllEntries();
           renderCalendar();
         } else {
@@ -4294,7 +4295,10 @@
     document.getElementById('intReviewSummary').textContent = '출장자순 정렬 중...';
     document.getElementById('intReviewIssues').innerHTML = '';
     RUN()
-      .withSuccessHandler(function () { loadIntegratedReview_(dateStr); })
+      .withSuccessHandler(function (res) {
+        if (res && res.moved && res.moved.length) toast('늦게 들어온 기록 ' + res.moved.length + '건을 날짜 제자리로 옮겼습니다');
+        loadIntegratedReview_(dateStr);
+      })
       .withFailureHandler(function (e) { toast('정렬 중 오류(검토는 계속 진행): ' + e.message); loadIntegratedReview_(dateStr); })
       .sortDayByAgent(dateStr);
   }
