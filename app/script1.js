@@ -17,7 +17,7 @@
 
   // 화면에 보이는 버전 배지(V53.x). 배포 때마다 여기를 올리고, 이번 업데이트 요약 한 줄은
   // 서버의 Changelog.js에 추가한다 — 그러면 로그인 시 1회성 팝업으로 자동 안내된다.
-  const APP_VERSION = 'V55.31';
+  const APP_VERSION = 'V55.32';
   // 지점 목록 — 서버 Code.js BRANCHES_가 doGet에서 아래 [ ] 자리를 통째로 바꿔 끼운다(2026-10-11, 지점 목록 한 곳으로).
   // 여기 적힌 값은 GitHub Pages 앱 셸처럼 서버가 끼워 넣지 못하는 경우의 예비값이다. 지점을 늘릴 땐 서버만 고치면 된다.
   const APP_BRANCHES_ = /*@@BRANCHES@@*/[{"name":"본사","key":"","open":true},{"name":"인천","key":"인천","open":true},{"name":"남양주","key":"남양주","open":true},{"name":"강서","key":"강서","open":false},{"name":"의정부","key":"의정부","open":false}];
@@ -713,6 +713,11 @@
     bizregState = { rowIndex: rowIndex, fileId: null, fileName: '' };
     document.getElementById('bizreg_rowIndex').value = rowIndex;
     document.getElementById('bizreg_fileInput').value = '';
+    // 폼은 숨기기만 하면 직전에 연 건의 값이 남는다 — 등록증이 없는 건에서 파일을 올리면
+    // handleBizRegFile의 "이메일 유지"가 그 남은 이메일을 이 건에 넣어버렸다(2026-10-14 사장님 제보).
+    fillBizRegForm_({});
+    renderBizRegPreview_(null);
+    document.getElementById('bizregFormStatus').textContent = '';
     document.getElementById('bizregUploadStatus').textContent = '불러오는 중...';
     document.getElementById('bizregUploadView').classList.remove('hidden');
     document.getElementById('bizregFormView').classList.add('hidden');
@@ -753,6 +758,7 @@
 
     RUN()
       .withSuccessHandler(function (res) {
+        if (bizregState.rowIndex !== rowIndex) return; // 응답 오기 전에 다른 건을 열었으면 버린다
         document.getElementById('bizregUploadStatus').textContent = '';
         if (res && res.exists) {
           bizregState.fileId = res.fileId;
