@@ -17,7 +17,7 @@
 
   // 화면에 보이는 버전 배지(V53.x). 배포 때마다 여기를 올리고, 이번 업데이트 요약 한 줄은
   // 서버의 Changelog.js에 추가한다 — 그러면 로그인 시 1회성 팝업으로 자동 안내된다.
-  const APP_VERSION = 'V56.1';
+  const APP_VERSION = 'V56.2';
   // 지점 목록 — 서버 Code.js BRANCHES_가 doGet에서 아래 [ ] 자리를 통째로 바꿔 끼운다(2026-10-11, 지점 목록 한 곳으로).
   // 여기 적힌 값은 GitHub Pages 앱 셸처럼 서버가 끼워 넣지 못하는 경우의 예비값이다. 지점을 늘릴 땐 서버만 고치면 된다.
   const APP_BRANCHES_ = /*@@BRANCHES@@*/[{"name":"본사","key":"","open":true},{"name":"인천","key":"인천","open":true},{"name":"남양주","key":"남양주","open":true},{"name":"강서","key":"강서","open":false},{"name":"의정부","key":"의정부","open":false}];
