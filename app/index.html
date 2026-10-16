@@ -1099,6 +1099,22 @@
           <div id="emailNotifyQuota" class="muted" style="margin-top:8px;font-size:12px;"></div>
         </div>
 
+        <!-- 타임트리 → 구글 캘린더 자동 복사(TimeTree.js). 계정은 서버 금고에만 저장되고 다시 내려오지 않는다 -->
+        <div class="card">
+          <strong>🗓️ 타임트리 연동 (구글 캘린더로 자동 복사)</strong>
+          <p class="muted" style="margin-top:4px;">
+            타임트리 일정을 1시간마다 사장님 구글 캘린더("TT 캘린더이름")에 복사합니다. PC가 꺼져 있어도 됩니다.
+            지니(클로드)는 구글 캘린더로 일정을 읽습니다. 복사는 한쪽 방향이라, 일정은 지금처럼 타임트리에서 잡으세요.
+          </p>
+          <div id="ttStatus" class="muted" style="margin:8px 0;font-size:13px;white-space:pre-line;">불러오는 중...</div>
+          <div class="row" style="flex-wrap:wrap;">
+            <input id="ttEmail" type="email" placeholder="타임트리 로그인 이메일" autocomplete="off" style="min-width:180px;" />
+            <input id="ttPassword" type="password" placeholder="타임트리 비밀번호" autocomplete="new-password" style="min-width:150px;" />
+            <button class="btn-primary" onclick="saveTimeTreeAccount()">저장·로그인 확인</button>
+            <button class="btn-outline" onclick="runTimeTreeSync()">지금 복사</button>
+          </div>
+        </div>
+
         <!-- Gemini·OpenAI 썸네일 API 키 카드와 네이버 블로그 자동발행 카드는 2026-09-16 뺐다(블로그 흐름 통일 —
              글은 Claude Code가 쓰고 발행은 사장님이 직접 한다). 두 키는 블로그 자동생성에서만 쓰였다. 서버 함수는 남아 있다. -->
       </div>
@@ -2231,9 +2247,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V55.38"></script>
-<script src="script2.js?v=V55.38"></script>
-<script src="script3.js?v=V55.38"></script>
+<script src="script1.js?v=V55.39"></script>
+<script src="script2.js?v=V55.39"></script>
+<script src="script3.js?v=V55.39"></script>
 </body>
 </html>
 

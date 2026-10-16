@@ -783,7 +783,7 @@
     if (tab === 'stats') { loadStatistics(); loadPnL(); }
     if (tab === 'album') initAlbumTab();
     // 네이버 연동·Gemini/OpenAI 키 상태 조회는 그 카드들을 뺀 2026-09-16부터 부르지 않는다(블로그 흐름 통일)
-    if (tab === 'users') { loadNotifyUsers_(); }
+    if (tab === 'users') { loadNotifyUsers_(); loadTimeTreeStatus(); }
     if (tab === 'vehicle') loadVehicleTab();
     if (tab === 'docs') loadDocsManageTab();
     if (tab === 'expense') loadExpenseTab();
@@ -4019,6 +4019,52 @@
       .withSuccessHandler(function (res) { el.textContent = (res && res.linked) ? '✓ 저장됨' : '아직 저장된 키가 없습니다'; })
       .withFailureHandler(function () { el.textContent = ''; })
       .getOpenAiKeyStatus();
+  }
+
+  // ---------- 🗓️ 타임트리 연동 (TimeTree.js) ----------
+  function renderTimeTreeStatus_(res) {
+    const el = document.getElementById('ttStatus');
+    if (!el) return;
+    if (!res || !res.linked) { el.textContent = '아직 연결 안 됨 — 타임트리 이메일·비밀번호를 넣고 저장하세요.'; return; }
+    const lines = ['연결됨: ' + res.email + (res.trigger ? ' · 1시간마다 자동 복사 켜짐' : ' · 자동 복사 꺼짐')];
+    const st = res.status;
+    if (st) {
+      lines.push('마지막 복사: ' + st.at + (st.ok ? (st.partial ? ' (일부 — 다음 회차에 이어서)' : ' ✅') : ' ❌ ' + st.error));
+      (st.calendars || []).forEach(function (c) {
+        lines.push('  · ' + c.name + ': 바뀐 일정 ' + c.changed + ' → 복사 ' + c.copied + ', 삭제 ' + c.deleted +
+          (c.errors ? ', 실패 ' + c.errors + ' (' + c.firstError + ')' : '') + (c.partial ? ' (이어서 계속)' : ''));
+      });
+    }
+    el.textContent = lines.join('\n');
+  }
+
+  function loadTimeTreeStatus() {
+    RUN().withSuccessHandler(renderTimeTreeStatus_)
+      .withFailureHandler(function (e) { const el = document.getElementById('ttStatus'); if (el) el.textContent = '상태를 불러오지 못했습니다: ' + e.message; })
+      .getTimeTreeStatus();
+  }
+
+  function saveTimeTreeAccount() {
+    const email = document.getElementById('ttEmail').value.trim();
+    const pwEl = document.getElementById('ttPassword');
+    if (!email || !pwEl.value) { toast('이메일과 비밀번호를 넣어주세요'); return; }
+    toast('타임트리에 로그인해 보는 중...');
+    RUN()
+      .withSuccessHandler(function (res) {
+        pwEl.value = ''; // 화면에 비밀번호를 남기지 않는다
+        toast(res && res.message ? res.message : '저장했습니다');
+        loadTimeTreeStatus();
+      })
+      .withFailureHandler(function (e) { pwEl.value = ''; toast('오류: ' + e.message); })
+      .setTimeTreeAccount(email, pwEl.value);
+  }
+
+  function runTimeTreeSync() {
+    toast('타임트리 일정을 복사하는 중... (처음엔 몇 분 걸릴 수 있어요)');
+    RUN()
+      .withSuccessHandler(function (st) { renderTimeTreeStatus_({ linked: true, email: '', trigger: true, status: st }); loadTimeTreeStatus(); toast(st && st.ok ? '복사 완료' : '복사 실패 — 아래 내용을 확인하세요'); })
+      .withFailureHandler(function (e) { toast('오류: ' + e.message); })
+      .runTimeTreeSyncNow();
   }
 
   // ---------- 📧 이메일 알림 ----------
