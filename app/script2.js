@@ -4026,10 +4026,11 @@
     const el = document.getElementById('ttStatus');
     if (!el) return;
     if (!res || !res.linked) { el.textContent = '아직 연결 안 됨 — 타임트리 이메일·비밀번호를 넣고 저장하세요.'; return; }
-    const lines = ['연결됨: ' + res.email + (res.trigger ? ' · 1시간마다 자동 복사 켜짐' : ' · 자동 복사 꺼짐')];
+    const lines = ['연결됨: ' + res.email + (res.trigger ? ' · ' + (res.minutes || 10) + '분마다 자동 복사 켜짐' : ' · 자동 복사 꺼짐')];
     const st = res.status;
     if (st) {
-      lines.push('마지막 복사: ' + st.at + (st.ok ? (st.partial ? ' (일부 — 다음 회차에 이어서)' : ' ✅') : ' ❌ ' + st.error));
+      if (res.next) lines.push('다음 복사: ' + res.next + ' (정각 기준 10분마다)');
+      lines.push('마지막 복사: ' + st.at + (st.sec != null ? ' (' + st.sec + '초)' : '') + (st.ok ? (st.partial ? ' (일부 — 다음 회차에 이어서)' : ' ✅') : ' ❌ ' + st.error));
       (st.calendars || []).forEach(function (c) {
         lines.push('  · ' + c.name + ': 바뀐 일정 ' + c.changed + ' → 복사 ' + c.copied + ', 삭제 ' + c.deleted +
           (c.errors ? ', 실패 ' + c.errors + ' (' + c.firstError + ')' : '') + (c.partial ? ' (이어서 계속)' : ''));
