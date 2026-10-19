@@ -1745,7 +1745,7 @@
     lastDocFileId = null;
     lastDocFileName = '';
     docEditState = { existingFileId: null, linkedRowIndex: null };
-    renderDocItems();
+    cancelDocItemEdit(); // 품목 고치던 상태·입력칸도 비운다(renderDocItems 포함)
     document.getElementById('docModalTitle').textContent = kind === 'estimate' ? '견적서 작성' : '거래명세서 작성';
     document.getElementById('doc_client').value = '';
     document.getElementById('doc_date').value = todayStr_(); // valueAsDate는 UTC라 오전 9시 전엔 어제가 됐다(2026-10-11)
@@ -1849,7 +1849,7 @@
     RUN()
       .withSuccessHandler(function (rows) {
         const list = Array.isArray(rows) ? rows : [];
-        if (!list.length) { wrap.innerHTML = '<span class="muted">오늘 작성한 ' + (kind === 'estimate' ? '견적서' : '거래명세서') + '가 없습니다.</span>'; return; }
+        if (!list.length) { wrap.innerHTML = '<span class="muted">최근 30일 동안 작성한 ' + (kind === 'estimate' ? '견적서' : '거래명세서') + '가 없습니다.</span>'; return; }
         wrap.innerHTML = list.map(function (d) {
           return `<div style="padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick='loadDocForEdit("${escapeJsStr_(d.fileId)}")'>
             📄 ${escapeHtml_(d.client)} (${escapeHtml_(d.docDate)}) <span class="badge" style="float:right;">불러오기</span>
@@ -1857,7 +1857,7 @@
         }).join('');
       })
       .withFailureHandler(function (e) { wrap.innerHTML = '<span class="muted">오류: ' + e.message + '</span>'; })
-      .getTodayDocs(kind);
+      .getRecentDocs(kind, 30); // 오늘 것만 보이던 걸 30일로(2026-10-19) — 그보다 오래된 건 "견적서·거래명세서 관리" 탭
   }
 
   function loadDocForEdit(fileId) {
@@ -1870,7 +1870,7 @@
         document.getElementById('doc_date').value = doc.docDate;
         document.getElementById('doc_emailTo').value = doc.email || '';
         docItems = doc.items || [];
-        renderDocItems();
+        cancelDocItemEdit();
         docEditState.existingFileId = doc.fileId;
         docEditState.linkedRowIndex = doc.linkedRowIndex || null;
         document.getElementById('docEditingBanner').classList.remove('hidden');
@@ -1997,25 +1997,77 @@
     const price = numVal('doc_itemPrice');
     const note = document.getElementById('doc_itemNote').value.trim();
     if (!name) { toast('품목명을 입력하세요'); return; }
-    docItems.push({ name, spec, qty, price, note });
-    ['doc_itemName','doc_itemSpec','doc_itemNote'].forEach(id => document.getElementById(id).value = '');
+    if (docItemEditIdx_ >= 0 && docItems[docItemEditIdx_]) {
+      docItems[docItemEditIdx_] = { name, spec, qty, price, note }; // 고치던 품목을 그 자리에서 바꾼다(순서 유지)
+      toast('품목을 고쳤습니다');
+    } else {
+      docItems.push({ name, spec, qty, price, note });
+    }
+    cancelDocItemEdit(); // 입력칸 비우고 "추가" 상태로
+  }
+
+  // ---- 품목 고치기·순서 바꾸기 (2026-10-19 사장님 요청) ----
+  // 예전엔 품목 줄이 보기 전용이라 수량 하나 틀려도 지우고 새로 쳐야 했다.
+  // [수정]을 누르면 그 품목이 위 입력칸으로 올라가고 "추가" 버튼이 "수정 반영"이 된다 — 좁은 폰 화면에서도 칸이 넉넉하다.
+  let docItemEditIdx_ = -1;
+
+  function editDocItem(i) {
+    const it = docItems[i];
+    if (!it) return;
+    docItemEditIdx_ = i;
+    document.getElementById('doc_itemName').value = it.name || '';
+    document.getElementById('doc_itemSpec').value = it.spec || '';
+    document.getElementById('doc_itemQty').value = it.qty || 1;
+    document.getElementById('doc_itemPrice').value = it.price ? Number(it.price).toLocaleString('ko-KR') : '';
+    document.getElementById('doc_itemNote').value = it.note || '';
+    document.getElementById('docItemAddBtn').textContent = '수정 반영';
+    document.getElementById('docItemCancelBtn').classList.remove('hidden');
+    renderDocItems();
+    document.getElementById('doc_itemName').focus();
+  }
+
+  function cancelDocItemEdit() {
+    docItemEditIdx_ = -1;
+    ['doc_itemName','doc_itemSpec','doc_itemNote','doc_itemPrice'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('doc_itemQty').value = 1;
-    document.getElementById('doc_itemPrice').value = '';
+    document.getElementById('docItemAddBtn').textContent = '추가';
+    document.getElementById('docItemCancelBtn').classList.add('hidden');
     renderDocItems();
   }
 
-  function removeDocItem(i) { docItems.splice(i, 1); renderDocItems(); }
+  function moveDocItem(i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= docItems.length) return;
+    const t = docItems[i]; docItems[i] = docItems[j]; docItems[j] = t;
+    // 고치던 품목이 움직였으면 따라간다
+    if (docItemEditIdx_ === i) docItemEditIdx_ = j; else if (docItemEditIdx_ === j) docItemEditIdx_ = i;
+    renderDocItems();
+  }
+
+  function removeDocItem(i) {
+    docItems.splice(i, 1);
+    if (docItemEditIdx_ === i) { cancelDocItemEdit(); return; }
+    if (docItemEditIdx_ > i) docItemEditIdx_--;
+    renderDocItems();
+  }
 
   function renderDocItems() {
     const el = document.getElementById('docItemList');
+    const sb = 'padding:2px 7px;font-size:12px;';
     el.innerHTML = docItems.map((it, i) => {
       const supply = (it.qty && it.price) ? it.qty * it.price : 0;
-      return `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px;">
-        <span style="flex:2;">${it.name}${it.spec ? ' ('+it.spec+')' : ''}</span>
-        <span style="flex:1;">x${it.qty}</span>
+      const editing = i === docItemEditIdx_;
+      return `<div style="display:flex;align-items:center;gap:6px;padding:4px ${editing ? '6px' : '0'};border-bottom:1px solid var(--border);font-size:13px;${editing ? 'background:#fff7ed;border-radius:6px;' : ''}">
+        <span style="flex:2;min-width:0;">${escapeHtml_(it.name)}${it.spec ? ' (' + escapeHtml_(it.spec) + ')' : ''}${it.note ? '<br><span class="muted" style="font-size:11px;">' + escapeHtml_(it.note) + '</span>' : ''}</span>
+        <span style="flex:0 0 34px;">x${it.qty}</span>
         <span style="flex:1;">${fmtMoney(it.price)}</span>
         <span style="flex:1;">${fmtMoney(supply)}</span>
-        <button class="btn-danger" style="padding:2px 8px;font-size:12px;" onclick="removeDocItem(${i})">×</button>
+        <span style="flex:0 0 auto;display:flex;gap:3px;">
+          <button class="btn-outline" style="${sb}" title="위로" onclick="moveDocItem(${i},-1)" ${i === 0 ? 'disabled' : ''}>▲</button>
+          <button class="btn-outline" style="${sb}" title="아래로" onclick="moveDocItem(${i},1)" ${i === docItems.length - 1 ? 'disabled' : ''}>▼</button>
+          <button class="btn-outline" style="${sb}" onclick="editDocItem(${i})">${editing ? '수정 중' : '수정'}</button>
+          <button class="btn-danger" style="${sb}" onclick="removeDocItem(${i})">×</button>
+        </span>
       </div>`;
     }).join('');
     const totalSupply = docItems.reduce((s,it) => s + (it.qty*it.price||0), 0);

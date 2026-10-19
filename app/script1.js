@@ -17,7 +17,7 @@
 
   // 화면에 보이는 버전 배지(V53.x). 배포 때마다 여기를 올리고, 이번 업데이트 요약 한 줄은
   // 서버의 Changelog.js에 추가한다 — 그러면 로그인 시 1회성 팝업으로 자동 안내된다.
-  const APP_VERSION = 'V56.5';
+  const APP_VERSION = 'V56.7';
   // 지점 목록 — 서버 Code.js BRANCHES_가 doGet에서 아래 [ ] 자리를 통째로 바꿔 끼운다(2026-10-11, 지점 목록 한 곳으로).
   // 여기 적힌 값은 GitHub Pages 앱 셸처럼 서버가 끼워 넣지 못하는 경우의 예비값이다. 지점을 늘릴 땐 서버만 고치면 된다.
   const APP_BRANCHES_ = /*@@BRANCHES@@*/[{"name":"본사","key":"","open":true},{"name":"인천","key":"인천","open":true},{"name":"남양주","key":"남양주","open":true},{"name":"강서","key":"강서","open":false},{"name":"의정부","key":"의정부","open":false}];
@@ -1706,7 +1706,12 @@
   let agentListCache = [];
   function loadAgentList() {
     RUN()
-      .withSuccessHandler(function (rows) { agentListCache = Array.isArray(rows) ? rows : []; })
+      .withSuccessHandler(function (rows) {
+        agentListCache = Array.isArray(rows) ? rows : [];
+        // 관리자 기록입력의 출장자 칸 후보(자주 쓴 순 — 장부 G열에 실제로 쓰인 이름들, 공동 출장 표기 포함)
+        const dl = document.getElementById('a_agentList');
+        if (dl) dl.innerHTML = agentListCache.slice(0, 20).map(function (n) { return '<option value="' + escapeHtml_(n) + '"></option>'; }).join('');
+      })
       .getAgentList();
   }
 
@@ -2193,6 +2198,7 @@
     const confEl = g('confirmed'); if (confEl && r.confirmed) confEl.value = r.confirmed;
     g('note').value = r.note || '';
     g('source').value = r.source || '';
+    const agentEl = g('agent'); if (agentEl) agentEl.value = r.agent || ''; // 관리자 폼에만 있다
     // 소개지점을 안 실어 보내는 목록에서 연 기록이면 "모름"으로 두고, 저장 때 장부 값을 덮어쓰지 않는다
     editState.refUnknown = (r.referrer === undefined || r.referrer === null);
     setReferrer_(prefix, editState.refUnknown ? '' : r.referrer);
@@ -2301,7 +2307,7 @@
   }
 
   function clearFormFields_(prefix) {
-    ['address','content','amount','eAmount','note','source','cost','margin'].forEach(id => {
+    ['address','content','amount','eAmount','note','source','agent','cost','margin'].forEach(id => {
       const el = document.getElementById(prefix + '_' + id); if (el) el.value = '';
     });
     setReferrer_(prefix, '');
@@ -2417,6 +2423,7 @@
   }
 
   function showEDocLinkPicked_(prefix, link) {
+    eDocLinkState_.kind = link.kind; // [수정] 버튼이 문서 작성 창을 어느 종류로 열지
     document.getElementById(prefix + '_docLinkPicked').classList.remove('hidden');
     document.getElementById(prefix + '_docLinkSearchWrap').classList.add('hidden');
     document.getElementById(prefix + '_docLinkPickedText').textContent =
@@ -2492,6 +2499,12 @@
       })
       .withFailureHandler(function (e) { toast('오류: ' + e.message); })
       .linkDocToRow(d.fileId, rowIndex);
+  }
+
+  // 연결된 견적서·거래명세서를 문서 작성 창에 불러와 고친다(2026-10-19) — PDF 생성을 누르면 같은 파일이 갱신되고 연결은 그대로.
+  function editEDocLink(prefix) {
+    if (!eDocLinkState_.fileId) { toast('연결된 문서가 없습니다'); return; }
+    openDocForManageEdit(eDocLinkState_.fileId, eDocLinkState_.kind || 'estimate');
   }
 
   function clearEDocLink(prefix) {
@@ -2572,7 +2585,9 @@
       amount: eAmount,
       subtitle: baseAmount,
 
-      agent: isEditing ? editState.agent : currentUser.name,
+      // 관리자 폼은 출장자 칸(a_agent)을 따른다 — 비우면 수정은 원래 출장자, 새 기록은 본인(2026-10-19 사장님 요청).
+      // 직원 폼엔 칸이 없고 서버(addEntryLocked_/updateOwnEntry)도 본인으로 못박는다.
+      agent: (g('agent') && g('agent').value.trim()) || (isEditing ? editState.agent : currentUser.name),
       payType: g('payType').value,
       confirmed: g('confirmed').value,
       note: g('note').value,

@@ -1000,6 +1000,9 @@
             <input id="a_source" placeholder="예: 숨고 / 관리 / 당근" autocomplete="off" oninput="onSourceInput('a')" onfocus="showSourceDropdown('a')" />
             <div id="a_sourceDrop" class="ac-dropdown hidden"></div>
           </div>
+          <label>출장자 <span class="muted" style="font-size:12px;font-weight:400;">— 비워두면 본인. 직원 대신 넣거나 고칠 때 바꾸세요</span></label>
+          <input id="a_agent" list="a_agentList" autocomplete="off" placeholder="비우면 본인" onfocus="if(!agentListCache.length)loadAgentList()" />
+          <datalist id="a_agentList"></datalist>
           <label>넘겨준 지점 <span class="muted" style="font-size:12px;font-weight:400;">— 다른 지점에서 넘겨받은 일이면 체크 (마진 20%를 그 지점에 지급)</span></label>
           <input type="hidden" id="a_referrer" />
           <div id="a_referrerChips" style="margin-top:4px;"></div>
@@ -1010,6 +1013,7 @@
             <div id="a_docLinkPicked" class="hidden" style="font-size:13px;margin-bottom:6px;">
               <span id="a_docLinkPickedText"></span>
               <a id="a_docLinkOpenBtn" href="#" target="_blank" class="btn-outline" style="padding:2px 8px;font-size:12px;text-decoration:none;">열기</a>
+              <button class="btn-outline" style="padding:2px 8px;font-size:12px;" onclick="editEDocLink('a')">수정</button>
               <button class="btn-outline" style="padding:2px 8px;font-size:12px;" onclick="clearEDocLink('a')">연결 해제</button>
             </div>
             <div id="a_docLinkSearchWrap" class="row">
@@ -2135,8 +2139,8 @@
       <h3 id="docModalTitle">견적서 작성</h3>
 
       <div id="docTodayListWrap" style="margin-bottom:10px;padding:10px;border:1px dashed var(--border);border-radius:8px;background:#fafbfc;">
-        <strong style="font-size:13px;">오늘 작성한 문서 불러와서 수정</strong>
-        <div id="docTodayList" style="margin-top:6px;font-size:13px;"></div>
+        <strong style="font-size:13px;">최근 작성한 문서 불러와서 수정 <span class="muted" style="font-weight:400;">(30일 · 그 전 것은 "견적서·거래명세서 관리" 탭)</span></strong>
+        <div id="docTodayList" style="margin-top:6px;font-size:13px;max-height:180px;overflow-y:auto;"></div>
       </div>
 
       <div id="docEditingBanner" class="hidden" style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:#eef6ff;color:#1d4ed8;font-size:13px;">
@@ -2171,7 +2175,8 @@
           <input id="doc_itemQty" type="number" placeholder="수량" value="1" style="flex:1;min-width:60px;" />
           <input id="doc_itemPrice" type="text" inputmode="numeric" placeholder="단가" oninput="onMoneyInput(this)" style="flex:1;min-width:80px;" />
           <input id="doc_itemNote" placeholder="비고" style="flex:1;min-width:70px;" />
-          <button class="btn-outline" style="flex:1;" onclick="addDocItem()">추가</button>
+          <button id="docItemAddBtn" class="btn-outline" style="flex:1;white-space:nowrap;" onclick="addDocItem()">추가</button>
+          <button id="docItemCancelBtn" class="btn-outline hidden" style="flex:1;white-space:nowrap;" onclick="cancelDocItemEdit()">취소</button>
         </div>
         <div id="docItemList" style="margin-top:8px;"></div>
         <div id="docItemTotal" class="muted" style="margin-top:6px;text-align:right;"></div>
@@ -2247,9 +2252,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V56.5"></script>
-<script src="script2.js?v=V56.5"></script>
-<script src="script3.js?v=V56.5"></script>
+<script src="script1.js?v=V56.7"></script>
+<script src="script2.js?v=V56.7"></script>
+<script src="script3.js?v=V56.7"></script>
 </body>
 </html>
 
