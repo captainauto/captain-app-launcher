@@ -1763,7 +1763,7 @@
             <table style="table-layout:fixed;">
               <thead>
                 <tr>
-                  <th style="width:84px;">날짜</th><th style="width:64px;">종류</th><th style="width:130px;">거래처</th><th style="width:64px;">장부연결</th><th style="width:190px;"></th>
+                  <th style="width:84px;">날짜</th><th style="width:64px;">종류</th><th style="width:130px;">거래처</th><th style="width:64px;">장부연결</th><th style="width:240px;"></th>
                 </tr>
               </thead>
               <tbody id="docsMgBody"></tbody>
@@ -2026,6 +2026,8 @@
       </div>
       <div id="intReviewSummary" class="muted" style="margin:6px 0 12px;"></div>
       <div id="intReviewIssues" style="max-height:340px;overflow-y:auto;"></div>
+      <!-- 캘린더(타임트리 사본)와 대조 — 검토 결과가 먼저 뜨고 이건 뒤따라 채워진다(V56.9) -->
+      <div id="intReviewCal" style="max-height:260px;overflow-y:auto;margin-top:10px;"></div>
       <div class="row" style="margin-top:16px;">
         <button class="btn-outline" style="flex:1;" onclick="document.getElementById('integratedReviewModal').classList.add('hidden')">수정하기</button>
         <button class="btn-primary" style="flex:1;" onclick="finishIntegratedLedger_()">완료</button>
@@ -2252,9 +2254,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V56.7"></script>
-<script src="script2.js?v=V56.7"></script>
-<script src="script3.js?v=V56.7"></script>
+<script src="script1.js?v=V56.10"></script>
+<script src="script2.js?v=V56.10"></script>
+<script src="script3.js?v=V56.10"></script>
 </body>
 </html>
 

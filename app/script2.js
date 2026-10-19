@@ -1919,6 +1919,7 @@
             <td>
               <a href="${url}" target="_blank" class="btn-outline" style="padding:2px 8px;font-size:12px;text-decoration:none;">PDF 보기</a>
               <button class="btn-outline" style="padding:2px 8px;font-size:12px;" onclick='openDocForManageEdit("${escapeJsStr_(d.fileId)}","${d.kind}")'>수정</button>
+              <button class="btn-outline" style="padding:2px 8px;font-size:12px;" onclick='duplicateDocFromManage("${escapeJsStr_(d.fileId)}","${d.kind}")'>복제</button>
               <button class="btn-danger" style="padding:2px 8px;font-size:12px;" onclick="deleteDocFromManage('${escapeJsStr_(d.fileId)}')">삭제</button>
             </td>
           </tr>`;
@@ -1931,6 +1932,23 @@
   function openDocForManageEdit(fileId, kind) {
     openDocModal(kind);
     loadDocForEdit(fileId);
+  }
+
+  // 복제(V56.10, 2026-10-19 사장님 요청) — 기존 문서의 거래처·이메일·품목을 그대로 담은 "새 문서"로 연다.
+  // 수정(loadDocForEdit)과 달리 원본 파일·장부 연결은 가져오지 않고 날짜는 오늘로 — PDF 생성을 누르면 새 파일이 생기고 원본은 그대로다.
+  function duplicateDocFromManage(fileId, kind) {
+    openDocModal(kind);
+    RUN()
+      .withSuccessHandler(function (doc) {
+        if (!doc) { toast('복제할 문서를 찾지 못했습니다'); return; }
+        document.getElementById('doc_client').value = doc.client || '';
+        document.getElementById('doc_emailTo').value = doc.email || '';
+        docItems = JSON.parse(JSON.stringify(doc.items || [])); // 원본 목록과 엮이지 않게 통째로 복사
+        cancelDocItemEdit(); // 품목 표를 다시 그린다
+        toast('"' + (doc.client || '') + '" ' + (doc.kind === 'estimate' ? '견적서' : '거래명세서') + '를 복제했습니다. 고칠 곳만 고치고 "PDF 생성"을 누르면 새 문서로 저장됩니다.');
+      })
+      .withFailureHandler(function (e) { toast('오류: ' + e.message); })
+      .getDocByFileId(fileId);
   }
 
   function deleteDocFromManage(fileId) {
@@ -4439,6 +4457,39 @@
         document.getElementById('intReviewSummary').textContent = '검토 중 오류: ' + e.message;
       })
       .validateTodayLedger(dateStr);
+    loadCalendarCompare_(dateStr);
+  }
+
+  // 장부 ↔ 구글 캘린더(타임트리 사본) 대조 (V56.9) — 장부가 기준이고, 물어볼 것만 보여준다. 완료를 막지 않는다.
+  // 날짜를 빨리 바꾸면 앞 요청 결과가 늦게 와서 덮어쓸 수 있어 마지막 요청만 그린다.
+  let calCompareSeq_ = 0;
+  function loadCalendarCompare_(dateStr) {
+    const el = document.getElementById('intReviewCal');
+    if (!el) return;
+    const seq = ++calCompareSeq_;
+    el.innerHTML = '<div class="muted" style="font-size:13px;">📅 캘린더 일정과 맞춰 보는 중...</div>';
+    RUN()
+      .withSuccessHandler(function (res) {
+        if (seq !== calCompareSeq_) return;
+        if (!res || !res.linked) { el.innerHTML = '<div class="muted" style="font-size:13px;">📅 ' + escapeHtml_((res && res.message) || '캘린더 대조를 건너뜁니다') + '</div>'; return; }
+        const notes = res.notes || [];
+        let html = '<div style="font-weight:600;margin:4px 0 6px;">📅 캘린더와 대조 <span class="muted" style="font-weight:400;font-size:13px;">· 일정 ' +
+          res.events + '개 · 장부 ' + res.rows + '건 중 ' + res.pairs + '건 짝지음' + (notes.length ? ' · 확인할 것 ' + notes.length + '건' : '') + '</span></div>';
+        if (!notes.length) html += '<div class="muted" style="font-size:13px;">캘린더와 다른 점이 없습니다 ✅</div>';
+        notes.forEach(function (n) {
+          html += '<div class="card" style="background:#eff6ff;border-color:#93c5fd;margin-bottom:8px;">' +
+            '<strong>' + (n.kind === 'missing' ? '장부에 없음 · ' : '') + escapeHtml_(n.address || n.event || '') + '</strong>' +
+            '<div class="muted" style="margin:4px 0;">일정: ' + escapeHtml_(n.event || '') + (n.agent ? ' · ' + escapeHtml_(n.agent) : '') + '</div>' +
+            n.items.map(function (t) { return '<div style="color:#1d4ed8;font-size:13px;">❓ ' + escapeHtml_(t) + '</div>'; }).join('') +
+            '</div>';
+        });
+        el.innerHTML = html;
+      })
+      .withFailureHandler(function (e) {
+        if (seq !== calCompareSeq_) return;
+        el.innerHTML = '<div class="muted" style="font-size:13px;">📅 캘린더 대조 중 오류(검토·완료에는 영향 없음): ' + escapeHtml_(e.message) + '</div>';
+      })
+      .compareLedgerWithCalendar(dateStr);
   }
 
   function finishIntegratedLedger_() {
