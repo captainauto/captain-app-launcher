@@ -263,6 +263,17 @@
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   var rec = null, listening = false, finalText = '', interimText = '', pressAt = 0, toggleMode = false;
 
+  /** 앞 결과를 포함한 새 결과면 바꿔 끼우고, 이미 들어 있는 조각이면 버리고, 새 말이면 이어 붙인다 */
+  function mergeSpeech(acc, t) {
+    var a = String(acc || '').trim(), b = String(t || '').trim();
+    if (!b) return a;
+    if (!a) return b;
+    var na = a.replace(/\s+/g, ''), nb = b.replace(/\s+/g, '');
+    if (nb.indexOf(na) === 0) return b;          // "인천점" 다음 "인천점 물건"
+    if (na.indexOf(nb) !== -1) return a;          // 같은 말을 또 보냄
+    return a + ' ' + b;                            // 정말 이어지는 새 말
+  }
+
   function setMicEnabled(on) { $('mic').disabled = !on || !SR; }
 
   if (!SR) {
@@ -277,13 +288,15 @@
     rec = new SR();
     rec.lang = 'ko-KR'; rec.interimResults = true; rec.continuous = true; rec.maxAlternatives = 1;
     rec.onresult = function (ev) {
-      // 매번 전체 결과를 다시 모은다(안드로이드 크롬이 같은 결과를 되풀이해 보내는 경우가 있어서)
+      // 매번 전체 결과를 다시 모은다. 안드로이드 크롬은 continuous 모드에서 "인천점" → "인천점 물건" →
+      // "인천점 물건 중에"처럼 앞 내용을 포함한 결과를 따로따로 확정해 보내서, 그냥 이어 붙이면 말이 겹친다(10-21 실측).
       var f = '', it = '';
       for (var i = 0; i < ev.results.length; i++) {
-        if (ev.results[i].isFinal) f += ev.results[i][0].transcript; else it += ev.results[i][0].transcript;
+        var t = ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) f = mergeSpeech(f, t); else it = mergeSpeech(it, t);
       }
       finalText = f; interimText = it;
-      $('live').textContent = (f + ' ' + it).trim();
+      $('live').textContent = mergeSpeech(f, it);
     };
     rec.onerror = function (ev) {
       var m = {
@@ -296,7 +309,7 @@
       if (m) $('live').textContent = m;
     };
     rec.onend = function () {
-      var said = (finalText + ' ' + interimText).trim();
+      var said = mergeSpeech(finalText, interimText);
       listening = false; toggleMode = false; $('mic').classList.remove('on');
       if (said) { $('live').textContent = ''; send(said); }
     };
