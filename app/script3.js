@@ -849,3 +849,25 @@
       .withFailureHandler(function (e) { toast('삭제 실패: ' + e.message); })
       .deleteExpense(rowIndex, r.date, r.amount);
   }
+
+  // ====================== 음성 비서 지니 (V57.0) ======================
+  // 앱 화면은 구글이 만든 틀(iframe) 안에서 도는데, 그 틀이 마이크를 허용하지 않는다(allow 목록에 microphone 없음).
+  // 그래서 지니는 GitHub Pages의 별도 화면(/jini/)으로 띄운다. 로그인은 다시 하지 않도록,
+  // 지니 화면이 "준비됐다(jini-ready)"고 알려오면 그 창에만(오리진 지정) 토큰을 건넨다.
+  const JINI_URL_ = 'https://captainauto.github.io/captain-app-launcher/jini/';
+  const JINI_ORIGIN_ = 'https://captainauto.github.io';
+  let jiniWin_ = null;
+
+  function openJini_() {
+    if (!currentUser || !isAdminRole_(currentUser.role)) return;
+    jiniWin_ = window.open(JINI_URL_, 'captainJini');
+    if (!jiniWin_) toast('새 창이 막혔습니다. 브라우저에서 팝업을 허용해주세요.');
+  }
+
+  window.addEventListener('message', function (ev) {
+    if (ev.origin !== JINI_ORIGIN_ || !ev.data || ev.data.type !== 'jini-ready') return;
+    if (!currentUser || !authToken_ || !isAdminRole_(currentUser.role) || !ev.source) return;
+    ev.source.postMessage({
+      type: 'jini-auth', token: authToken_, name: currentUser.name, role: currentUser.role, branch: getBranch_()
+    }, JINI_ORIGIN_);
+  });
