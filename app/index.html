@@ -139,13 +139,6 @@
       font-size: 14px; z-index: 100; opacity: 0; transition: opacity .3s;
     }
     .toast.show { opacity: 1; }
-    /* 음성 비서 지니 버튼(V57.0) — 관리자에게만 보인다. 누르면 지니 화면이 새 창으로 열린다(구글 틀 안은 마이크가 막혀 있다) */
-    .jini-fab {
-      position: fixed; right: 16px; bottom: 84px; z-index: 90;
-      width: 56px; height: 56px; padding: 0; border-radius: 50%;
-      background: var(--primary); color: #fff; font-size: 26px; line-height: 56px;
-      box-shadow: 0 4px 14px rgba(0,0,0,.25);
-    }
     .hidden { display: none !important; }
     .ac-dropdown {
       position: absolute; top: 100%; left: 0; right: 0; z-index: 30;
@@ -2141,7 +2134,6 @@
   </div>
 
   <div id="toast" class="toast"></div>
-  <button id="jiniFab" class="jini-fab hidden" onclick="openJini_()" aria-label="음성 비서 지니" title="음성 비서 지니">🎤</button>
 
   <div id="docModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:640px;">
@@ -2262,9 +2254,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V57.0"></script>
-<script src="script2.js?v=V57.0"></script>
-<script src="script3.js?v=V57.0"></script>
+<script src="script1.js?v=V56.12"></script>
+<script src="script2.js?v=V56.12"></script>
+<script src="script3.js?v=V56.12"></script>
 </body>
 </html>
 
