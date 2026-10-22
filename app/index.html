@@ -246,6 +246,10 @@
     .td-edit { display: flex; gap: 6px; flex-wrap: wrap; flex: 1 1 auto; }
     .td-edit input[type="text"] { flex: 1 1 160px; width: auto; padding: 6px 8px; font-size: 14px; }
     .td-edit input[type="date"] { flex: 0 0 140px; width: 140px; padding: 6px 8px; font-size: 14px; }
+    /* 직전 대시보드를 먼저 보여주는 동안(V56.15) — 옛 행으로 완료·제외를 누르지 않게 클릭을 잠근다. 스크롤은 된다 */
+    .snap-note { background: #fff7e0; border: 1px solid #f3d27a; color: #7a5b00; border-radius: 8px; padding: 6px 10px; font-size: 12px; margin-bottom: 10px; }
+    .snap-stale button, .snap-stale a, .snap-stale tr, .snap-stale input, .snap-stale select, .snap-stale .ed-alert { pointer-events: none; }
+    .snap-stale table, .snap-stale #dashSummary, .snap-stale .card { opacity: .8; }
     .td-edit button { padding: 6px 10px; font-size: 13px; }
     .td-done-toggle { margin-top: 8px; font-size: 13px; color: var(--muted); cursor: pointer; user-select: none; }
     .td-msg { font-size: 13px; color: var(--danger); margin-top: 6px; }
@@ -2301,9 +2305,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V56.14"></script>
-<script src="script2.js?v=V56.14"></script>
-<script src="script3.js?v=V56.14"></script>
+<script src="script1.js?v=V56.16"></script>
+<script src="script2.js?v=V56.16"></script>
+<script src="script3.js?v=V56.16"></script>
 </body>
 </html>
 

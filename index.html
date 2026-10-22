@@ -55,7 +55,49 @@
 // iframe으로만 열면 최상위 프레임이 계속 우리 도메인이라 배너가 표시되지 않는다.
 var APP_URL = 'https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec';
 
+// ── 빠른 주소(./app/, V56.16 속도 계획 4단계) ──────────────────────────
+// 같은 화면을 GitHub Pages에서 받으면 구글 셸(매번 600KB, 캐시 안 됨)이 사라져 앱 뜨는 시간이 2.9초 → 0.9초(8/14 실측).
+// 시범: 이 주소를 ?fast=1 로 한 번 열면 그 폰만 빠른 주소로, ?fast=0 이면 원래대로. 전원 전환은 FAST_DEFAULT를 true로.
+var FAST_DEFAULT = false;
+try {
+  var fq = new URLSearchParams(location.search).get('fast');
+  if (fq === '1') localStorage.setItem('useFastApp', '1');
+  if (fq === '0') localStorage.setItem('useFastApp', '0');
+} catch (e) {}
+function useFastApp() {
+  try {
+    var v = localStorage.getItem('useFastApp');
+    if (v === '1') return true;
+    if (v === '0') return false;
+  } catch (e) {}
+  return FAST_DEFAULT;
+}
+
+// 원래 앱(iframe 안)이 로그인 정보를 건네주면 여기(github.io) 저장소에 둔다 — 같은 오리진인 ./app/이 그대로 읽어서
+// 빠른 주소로 옮겨도 다시 로그인하지 않는다. 우리 iframe 안에서 온 메시지만 받는다(다른 창이 넣은 토큰은 무시).
+function fromOurFrame(src) {
+  var fw = document.getElementById('appFrame').contentWindow;
+  try {
+    for (var w = src, i = 0; w && i < 4; i++, w = w.parent) { if (w === fw) return true; if (w === w.parent) break; }
+  } catch (e) {}
+  return false;
+}
+window.addEventListener('message', function (e) {
+  if (!/\.googleusercontent\.com$/.test(e.origin) || !fromOurFrame(e.source)) return;
+  var d = e.data || {};
+  try {
+    if (d.type === 'captainLogin' && typeof d.authToken === 'string' && d.authToken && d.currentUser && d.currentUser.name) {
+      localStorage.setItem('authToken', d.authToken);
+      localStorage.setItem('currentUser', JSON.stringify(d.currentUser));
+    } else if (d.type === 'captainLogout') {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('currentUser');
+    }
+  } catch (err) {}
+});
+
 function openApp() {
+  if (useFastApp()) { location.replace('./app/'); return; }
   document.getElementById('landing').style.display = 'none';
   var frame = document.getElementById('appFrame');
   frame.style.display = 'block';
