@@ -2369,6 +2369,200 @@
       .excludeTaxInvoice(r.date, r.address, r.amount);
   }
 
+  // ====================== 홈택스 업로드 엑셀 (TaxExport.js, V56.13) ======================
+  // 건마다 거래처 후보를 고르고(또는 찾거나 직접 입력) "확인" 체크를 해야 만들 수 있다.
+  // 입력칸은 칠 때마다 다시 그리면 커서가 날아가므로 값만 담아두고, 후보 선택·검색·켜고 끄기 때만 다시 그린다.
+  let htx_ = null; // { rows, generic, st: [{ on, ci, fields, ok, remember, extra }] }
+  const HTX_FIELDS_ = [
+    ['regNo', '등록번호'], ['name', '상호'], ['ceo', '대표자 성명'], ['email1', '이메일1'], ['email2', '이메일2 (선택)'],
+    ['item', '품목'], ['remark', '비고 (머큐리는 (지점) 필수)'], ['addr', '사업장주소 (선택)'], ['bizType', '업태 (선택)'], ['bizItem', '종목 (선택)'], ['subNo', '종사업장번호 (선택)']
+  ];
+
+  function openHometaxModal() {
+    document.getElementById('hometaxModal').classList.remove('hidden');
+    document.getElementById('htxBody').innerHTML = '<div class="muted" style="padding:12px;">미발급 건과 거래처를 찾는 중... (장부·등록증·캘린더 사진을 같이 봐서 몇 초 걸립니다)</div>';
+    document.getElementById('htxErrors').innerHTML = '';
+    document.getElementById('htxResult').innerHTML = '';
+    document.getElementById('htxStatus').textContent = '';
+    document.getElementById('htxBuildBtn').disabled = true;
+    RUN()
+      .withSuccessHandler(function (res) {
+        htx_ = { rows: res.rows || [], generic: res.genericSources || [], st: [] };
+        document.getElementById('htxClientInfo').textContent = '거래처 기준 목록 ' + (res.clientCount || 0) + '곳' +
+          (res.clientCount ? '' : ' — 먼저 홈택스 거래처목록을 올려주세요 →');
+        htx_.rows.forEach(function (r, i) {
+          htx_.st[i] = { on: !r.blocked, ci: r.candidates.length ? 0 : -1, fields: {}, ok: false, remember: false, extra: [], kind: r.kind };
+          htxFill_(i);
+        });
+        renderHtx_();
+      })
+      .withFailureHandler(function (e) {
+        document.getElementById('htxBody').innerHTML = '<div class="htx-warn">불러오기 실패: ' + escapeHtml_(e.message) + '</div>';
+      })
+      .getHometaxExportCandidates();
+  }
+
+  function uploadHometaxClientList(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const info = document.getElementById('htxClientInfo');
+    info.textContent = '거래처목록 읽는 중... (' + file.name + ')';
+    const reader = new FileReader();
+    reader.onload = function () {
+      RUN()
+        .withSuccessHandler(function (res) {
+          input.value = '';
+          if (!res || !res.success) { info.textContent = (res && res.message) || '올리지 못했습니다'; return; }
+          toast(res.message);
+          openHometaxModal(); // 새 목록으로 후보를 다시 찾는다
+        })
+        .withFailureHandler(function (e) { input.value = ''; info.textContent = '올리기 실패: ' + e.message; })
+        .importHometaxClientList(reader.result.split(',')[1], file.name);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function htxCands_(i) { return htx_.rows[i].candidates.concat(htx_.st[i].extra); }
+
+  /** 고른 후보로 입력칸을 채운다(ci = -1이면 직접 입력: 비운다). 품목은 장부 내용 그대로 */
+  function htxFill_(i) {
+    const st = htx_.st[i], c = htxCands_(i)[st.ci] || {};
+    st.fields = {
+      regNo: c.regNoFmt || c.regNo || '', name: c.name || '', ceo: c.ceo || '', email1: c.email1 || '', email2: c.email2 || '',
+      item: st.fields.item || htx_.rows[i].item || '', remark: st.fields.remark != null ? st.fields.remark : (htx_.rows[i].remark || ''), addr: c.addr || '', bizType: c.bizType || '', bizItem: c.bizItem || '', subNo: c.subNo || ''
+    };
+    st.ok = false;
+  }
+
+  function renderHtx_() {
+    const body = document.getElementById('htxBody');
+    if (!htx_.rows.length) { body.innerHTML = '<div class="muted" style="padding:12px;">세금계산서 미발급 건이 없습니다 👍</div>'; updateHtxBtn_(); return; }
+    body.innerHTML = htx_.rows.map(function (r, i) {
+      const st = htx_.st[i];
+      const cls = 'htx-card' + (!st.on ? ' htx-off' : (st.ok ? ' htx-ok' : ''));
+      let h = '<div class="' + cls + '" id="htxCard_' + i + '">' +
+        '<div class="htx-head"><input type="checkbox" ' + (st.on ? 'checked ' : '') + (r.blocked ? 'disabled ' : '') + 'onchange="htxToggle(' + i + ', this.checked)" />' +
+        '<div><b>' + escapeHtml_(dateWithDow_(r.date)) + '</b> ' + escapeHtml_(r.address || '') +
+        '<div class="muted" style="font-size:12px;">' + escapeHtml_(r.content || '') + ' · ' + escapeHtml_(r.agent || '') + ' · 출처 ' + escapeHtml_(r.source || '-') + '</div>' +
+        (r.note ? '<div class="muted" style="font-size:12px;">' + escapeHtml_(r.note) + '</div>' : '') + '</div></div>' +
+        '<div class="htx-money">청구 ' + fmtMoney(r.amount) + ' → 공급가액 <b>' + fmtMoney(r.supply) + '</b> / 세액 <b>' + fmtMoney(r.tax) + '</b> · ' +
+        '<select style="width:auto;padding:3px 6px;font-size:12px;" onchange="htxKind(' + i + ', this.value)">' +
+        '<option value="01"' + (st.kind === '01' ? ' selected' : '') + '>영수 (대금 받음)</option>' +
+        '<option value="02"' + (st.kind === '02' ? ' selected' : '') + '>청구 (아직 안 받음)</option></select>' +
+        ' <span class="muted" style="font-size:11px;">입금확인: ' + escapeHtml_(r.confirmed || '-') + '</span></div>';
+      if (r.blocked) h += '<div class="htx-warn" style="margin-left:26px;">⛔ ' + escapeHtml_(r.blocked) + '</div>';
+      r.warnings.forEach(function (w) { h += '<div class="htx-warn" style="margin-left:26px;">⚠ ' + escapeHtml_(w) + '</div>'; });
+      if (st.on) {
+        const cands = htxCands_(i);
+        h += '<div class="htx-cands">' + (cands.length ? '' : '<div class="htx-warn">거래처를 못 찾았습니다 — 아래에서 상호·등록번호로 찾거나 직접 입력하세요.</div>');
+        cands.forEach(function (c, k) {
+          h += '<label class="htx-cand"><input type="radio" name="htxc_' + i + '" ' + (st.ci === k ? 'checked ' : '') + 'onchange="htxPick(' + i + ',' + k + ')" />' +
+            '<span><b>' + escapeHtml_(c.name || '(상호 없음)') + '</b> ' + escapeHtml_(c.regNoFmt || c.regNo || '') + ' · 대표 ' + escapeHtml_(c.ceo || '-') +
+            ' · ' + escapeHtml_(c.email1 || '이메일 없음') + '<span class="htx-badge">' + escapeHtml_(c.from || '') + '</span>' +
+            '<div class="muted" style="font-size:11px;">' + escapeHtml_((c.why || []).join(' / ')) +
+            (c.lastConfirmed ? ' · 마지막 확인 ' + escapeHtml_(c.lastConfirmed) : (c.infoDate ? ' · 정보 ' + escapeHtml_(c.infoDate) : '')) + '</div>' +
+            (c.warnings || []).map(function (w) { return '<div class="htx-warn">⚠ ' + escapeHtml_(w) + '</div>'; }).join('') + '</span></label>';
+        });
+        h += '<label class="htx-cand"><input type="radio" name="htxc_' + i + '" ' + (st.ci === -1 ? 'checked ' : '') + 'onchange="htxPick(' + i + ',-1)" /><span>✏️ 새 거래처 직접 입력</span></label></div>' +
+          '<div class="htx-search"><input type="text" id="htxQ_' + i + '" placeholder="상호·대표자·등록번호로 찾기" onkeydown="if(event.key===\'Enter\')htxSearch(' + i + ')" />' +
+          '<button class="btn-outline" style="padding:4px 10px;font-size:12px;" onclick="htxSearch(' + i + ')">🔍 찾기</button></div>' +
+          '<div class="htx-fields">' + HTX_FIELDS_.map(function (f) {
+            return '<div><label>' + f[1] + '</label><input type="text" value="' + escapeHtml_(st.fields[f[0]] || '') + '" oninput="htxField(' + i + ',\'' + f[0] + '\', this.value)" /></div>';
+          }).join('') + '</div>';
+        if (r.source && htx_.generic.indexOf(String(r.source).trim()) === -1) {
+          h += '<label class="htx-check"><input type="checkbox" ' + (st.remember ? 'checked ' : '') + 'onchange="htx_.st[' + i + '].remember=this.checked" />' +
+            '<span>출처 "' + escapeHtml_(r.source) + '" 건은 다음에도 이 거래처로 먼저 띄우기</span></label>';
+        }
+        h += '<label class="htx-check"><input type="checkbox" id="htxOk_' + i + '" ' + (st.ok ? 'checked ' : '') + 'onchange="htxOk(' + i + ', this.checked)" />' +
+          '<span><b>등록번호·상호·대표자·이메일을 확인했습니다</b></span></label>';
+      }
+      return h + '</div>';
+    }).join('');
+    updateHtxBtn_();
+  }
+
+  function htxToggle(i, on) { htx_.st[i].on = on; renderHtx_(); }
+  function htxKind(i, v) { htx_.st[i].kind = v; }
+  function htxPick(i, k) { htx_.st[i].ci = k; htxFill_(i); renderHtx_(); }
+  /** 칸을 고치면 확인 체크를 푼다 — 고친 값으로 다시 확인받아야 한다 */
+  function htxField(i, key, v) {
+    const st = htx_.st[i];
+    st.fields[key] = v;
+    if (st.ok) {
+      st.ok = false;
+      const cb = document.getElementById('htxOk_' + i); if (cb) cb.checked = false;
+      document.getElementById('htxCard_' + i).classList.remove('htx-ok');
+      updateHtxBtn_();
+    }
+  }
+  function htxOk(i, ok) {
+    htx_.st[i].ok = ok;
+    document.getElementById('htxCard_' + i).classList.toggle('htx-ok', ok);
+    updateHtxBtn_();
+  }
+  function htxSearch(i) {
+    const q = (document.getElementById('htxQ_' + i) || {}).value || '';
+    if (!q.trim()) return;
+    RUN()
+      .withSuccessHandler(function (list) {
+        if (!list || !list.length) { toast('"' + q + '" — 거래처 목록에 없습니다. 직접 입력해 주세요.'); return; }
+        list.forEach(function (c) { c.why = ['직접 찾음']; c.warnings = []; });
+        const st = htx_.st[i];
+        st.extra = list;
+        st.ci = htx_.rows[i].candidates.length; // 찾은 것 중 첫 번째를 고른다
+        htxFill_(i);
+        renderHtx_();
+      })
+      .withFailureHandler(function (e) { toast('찾기 실패: ' + e.message); })
+      .searchTaxClients(q);
+  }
+
+  function updateHtxBtn_() {
+    const on = htx_ ? htx_.st.filter(function (s) { return s.on; }) : [];
+    const ready = on.filter(function (s) { return s.ok; }).length;
+    const btn = document.getElementById('htxBuildBtn');
+    btn.disabled = !on.length || ready !== on.length;
+    document.getElementById('htxStatus').textContent = on.length ? ('고른 ' + on.length + '건 중 ' + ready + '건 확인') : '고른 건이 없습니다';
+  }
+
+  function buildHometaxExcelNow() {
+    const items = [];
+    htx_.rows.forEach(function (r, i) {
+      const st = htx_.st[i];
+      if (!st.on) return;
+      items.push(Object.assign({ rowId: r.rowId, kind: st.kind, confirmed: st.ok === true, rememberSource: st.remember === true }, st.fields));
+    });
+    const btn = document.getElementById('htxBuildBtn');
+    btn.disabled = true; btn.textContent = '만드는 중...';
+    document.getElementById('htxErrors').innerHTML = '';
+    RUN()
+      .withSuccessHandler(function (res) {
+        btn.textContent = '엑셀 만들기';
+        updateHtxBtn_();
+        if (!res || !res.success) {
+          document.getElementById('htxErrors').innerHTML = '<div class="htx-warn" style="margin-top:8px;"><b>' + escapeHtml_((res && res.message) || '만들지 못했습니다') + '</b></div>' +
+            ((res && res.errors) || []).map(function (e) { return '<div class="htx-warn">· ' + escapeHtml_(e.label + ' — ' + e.message) + '</div>'; }).join('');
+          return;
+        }
+        const rows = res.summary.map(function (s) {
+          return '<tr><td>' + escapeHtml_(s.date) + '</td><td>' + escapeHtml_(s.regNo) + '</td><td>' + escapeHtml_(s.name) + '</td><td>' + escapeHtml_(s.ceo) +
+            '</td><td>' + escapeHtml_(s.email1) + '</td><td>' + escapeHtml_(s.remark || '') + '</td><td>' + fmtMoney(s.supply) + '</td><td>' + fmtMoney(s.tax) + '</td><td><b>' + fmtMoney(s.total) + '</b></td><td>' + s.kind + '</td></tr>';
+        }).join('');
+        document.getElementById('htxResult').innerHTML =
+          '<div style="padding:10px;border-radius:8px;background:#e6f4ea;"><b>✅ ' + res.count + '건 엑셀을 만들었습니다</b> — ' + escapeHtml_(res.fileName) +
+          '<div style="margin-top:6px;"><a class="btn-primary" style="display:inline-block;padding:6px 12px;text-decoration:none;" href="' + res.downloadUrl + '" target="_blank" rel="noopener">⬇ 엑셀 내려받기</a> ' +
+          '<a class="btn-outline" style="display:inline-block;padding:6px 12px;text-decoration:none;" href="' + res.url + '" target="_blank" rel="noopener">드라이브에서 보기</a></div></div>' +
+          '<div class="table-wrap" style="margin-top:8px;"><table class="htx-sum"><thead><tr><th>날짜</th><th>등록번호</th><th>상호</th><th>대표자</th><th>이메일</th><th>비고</th><th>공급가액</th><th>세액</th><th>합계</th><th>구분</th></tr></thead><tbody>' + rows +
+          '<tr><td colspan="6"><b>합계</b></td><td>' + fmtMoney(res.totals.supply) + '</td><td>' + fmtMoney(res.totals.tax) + '</td><td><b>' + fmtMoney(res.totals.total) + '</b></td><td></td></tr></tbody></table></div>' +
+          '<div class="muted" style="font-size:12px;margin-top:6px;">' + escapeHtml_(res.next) + '</div>';
+      })
+      .withFailureHandler(function (e) {
+        btn.textContent = '엑셀 만들기'; updateHtxBtn_();
+        document.getElementById('htxErrors').innerHTML = '<div class="htx-warn">오류: ' + escapeHtml_(e.message) + '</div>';
+      })
+      .buildHometaxExcel(items);
+  }
+
   /** 그리는 부분만 분리(loadTodayTax와 같은 이유). */
   function renderTodayCash_(rows) {
     const body = document.getElementById('dashCashBody');

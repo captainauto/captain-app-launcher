@@ -791,6 +791,7 @@
                 <strong>세금계산서 (미발급)</strong>
                 <span>
                   <span id="dashTaxCount" class="muted"></span>
+                  <button class="btn-primary" style="padding:5px 10px;font-size:12px;margin-left:6px;" onclick="openHometaxModal()">📤 홈택스 엑셀</button>
                   <a href="https://www.hometax.go.kr" target="_blank" rel="noopener" class="btn-outline" style="display:inline-block;padding:5px 10px;font-size:12px;text-decoration:none;margin-left:6px;">홈택스 바로가기 ↗</a>
                 </span>
               </div>
@@ -1920,6 +1921,52 @@
     </div>
   </div>
 
+  <!-- 홈택스 세금계산서 업로드 엑셀 (TaxExport.js, V56.13). 건마다 거래처를 사람이 확인해야 엑셀이 만들어진다.
+       전역 `.row > *{flex:1}`·`input{width:100%}` 함정을 피하려고 .row 대신 htx- 전용 클래스를 쓴다. -->
+  <style>
+    .htx-card { border: 1px solid #ddd; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+    .htx-card.htx-off { opacity: .55; }
+    .htx-card.htx-ok { border-color: #34a853; background: #f3fbf5; }
+    .htx-head { display: flex; gap: 8px; align-items: flex-start; }
+    .htx-head input[type="checkbox"], .htx-check input[type="checkbox"], .htx-cand input[type="radio"] { width: auto; margin-top: 3px; flex: 0 0 auto; }
+    .htx-money { font-size: 13px; margin: 4px 0 6px 26px; }
+    .htx-warn { color: #c5221f; font-size: 12px; margin: 2px 0; }
+    .htx-cands { margin: 6px 0 6px 26px; }
+    .htx-cand { display: flex; gap: 6px; align-items: flex-start; font-size: 13px; padding: 4px 0; border-top: 1px dashed #eee; }
+    .htx-badge { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 8px; background: #e8f0fe; color: #1a73e8; margin-left: 4px; }
+    .htx-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; margin: 6px 0 6px 26px; }
+    .htx-fields label { font-size: 11px; color: #666; display: block; }
+    .htx-fields input, .htx-fields select { padding: 6px 8px; font-size: 13px; }
+    .htx-check { display: flex; gap: 6px; align-items: flex-start; font-size: 13px; margin: 4px 0 0 26px; }
+    .htx-search { display: flex; gap: 6px; margin: 4px 0 0 26px; }
+    .htx-search input { flex: 1 1 auto; width: auto; padding: 6px 8px; font-size: 13px; }
+    .htx-search button { flex: 0 0 auto; }
+    .htx-sum td, .htx-sum th { font-size: 12px; padding: 4px 6px; }
+  </style>
+  <div id="hometaxModal" class="modal-backdrop hidden">
+    <div class="modal" style="max-width:860px;">
+      <button class="close-x" onclick="document.getElementById('hometaxModal').classList.add('hidden')">✕</button>
+      <h3>📤 홈택스 업로드 엑셀 만들기</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:10px;">
+        발급할 건을 고르고, 건마다 거래처(등록번호·상호·대표자·이메일)를 <b>확인 체크</b>해야 엑셀이 만들어집니다.
+        기존 거래처라도 대표자·담당 이메일이 바뀌었을 수 있어요. 발급은 홈택스에서 직접 하시고, 발급한 뒤 대시보드에서 <b>완료</b>를 눌러주세요.
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:12px;">
+        <span class="muted" id="htxClientInfo"></span>
+        <label class="btn-outline" style="flex:0 0 auto;padding:4px 10px;font-size:12px;cursor:pointer;">📥 홈택스 거래처목록 올리기
+          <input type="file" accept=".xls,.xlsx" style="display:none;" onchange="uploadHometaxClientList(this)" /></label>
+        <span class="muted">홈택스 → 거래처 관리에서 내려받은 엑셀. 다시 올리면 바뀐 이메일·대표자가 반영됩니다.</span>
+      </div>
+      <div id="htxBody"></div>
+      <div id="htxErrors"></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+        <button id="htxBuildBtn" class="btn-primary" style="flex:0 0 auto;" onclick="buildHometaxExcelNow()" disabled>엑셀 만들기</button>
+        <span id="htxStatus" class="muted" style="font-size:12px;"></span>
+      </div>
+      <div id="htxResult" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
   <div id="bizRegModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:600px;">
       <button class="close-x" onclick="document.getElementById('bizRegModal').classList.add('hidden')">✕</button>
@@ -2254,9 +2301,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V56.12"></script>
-<script src="script2.js?v=V56.12"></script>
-<script src="script3.js?v=V56.12"></script>
+<script src="script1.js?v=V56.13"></script>
+<script src="script2.js?v=V56.13"></script>
+<script src="script3.js?v=V56.13"></script>
 </body>
 </html>
 
