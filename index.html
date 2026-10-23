@@ -58,7 +58,7 @@ var APP_URL = 'https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUB
 // ── 빠른 주소(./app/, V56.16 속도 계획 4단계) ──────────────────────────
 // 같은 화면을 GitHub Pages에서 받으면 구글 셸(매번 600KB, 캐시 안 됨)이 사라져 앱 뜨는 시간이 2.9초 → 0.9초(8/14 실측).
 // 시범: 이 주소를 ?fast=1 로 한 번 열면 그 폰만 빠른 주소로, ?fast=0 이면 원래대로. 전원 전환은 FAST_DEFAULT를 true로.
-var FAST_DEFAULT = false;
+var FAST_DEFAULT = true; // 10-23 전원 전환(사장님 시범 통과: 견적서 PDF·사진·48MB 영상). 되돌리려면 false
 try {
   var fq = new URLSearchParams(location.search).get('fast');
   if (fq === '1') localStorage.setItem('useFastApp', '1');
