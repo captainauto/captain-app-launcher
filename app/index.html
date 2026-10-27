@@ -135,6 +135,11 @@
         row-gap: 8px; margin-left: 0; margin-right: 0; padding: 8px 0;
       }
     }
+    /* V57.3: 탭마다 아이콘이 붙으면서 직원 탭 8개(976px)가 PC 한 줄(848px)을 넘어 "업데이트 내역" 하나만
+       둘째 줄로 떨어졌다 — PC에서는 4개씩 두 줄로 칸을 맞춰 반듯하게 보이게 한다. */
+    @media (min-width: 880px) {
+      .tabs.tabs-emp { display: grid; grid-template-columns: repeat(4, 1fr); }
+    }
     .tab-btn {
       background: #fff; border: 1px solid var(--border); color: var(--muted);
       padding: 8px 14px; border-radius: 20px; font-size: 14px; font-weight: 500;
@@ -340,15 +345,15 @@
         <button class="btn-outline" onclick="window.open('https://drive.google.com/file/d/1Oi7Wms2wmXFPTTYNaEE7SEHz4h8xK58W/view', '_blank')" title="캡틴자동문 앱 V57 설명서 (직원용 PDF)">📗 V57 설명서</button>
         <button class="btn-outline" onclick="logout()">로그아웃</button>
       </div>
-      <div class="tabs">
-        <button class="tab-btn active" id="empTabBtn-dash" onclick="showEmpTab('dash')">대시보드</button>
-        <button class="tab-btn" id="empTabBtn-input" onclick="showEmpTab('input')">기록 입력</button>
-        <button class="tab-btn" id="empTabBtn-incentive" onclick="showEmpTab('incentive')">내 인센티브</button>
-        <button class="tab-btn" id="empTabBtn-unpaid" onclick="showEmpTab('unpaid')">미수금</button>
-        <button class="tab-btn" id="empTabBtn-search" onclick="showEmpTab('search')">장부 검색</button>
-        <button class="tab-btn" id="empTabBtn-vehicle" onclick="showEmpTab('vehicle')">차량관리</button>
-        <button class="tab-btn" id="empTabBtn-album" onclick="showEmpTab('album')">공유 앨범</button>
-        <button class="tab-btn" id="empTabBtn-changelog" onclick="showEmpTab('changelog')">업데이트 내역</button>
+      <div class="tabs tabs-emp">
+        <button class="tab-btn active" id="empTabBtn-dash" onclick="showEmpTab('dash')">🏠 대시보드</button>
+        <button class="tab-btn" id="empTabBtn-input" onclick="showEmpTab('input')">📝 기록 입력</button>
+        <button class="tab-btn" id="empTabBtn-incentive" onclick="showEmpTab('incentive')">🎁 내 인센티브</button>
+        <button class="tab-btn" id="empTabBtn-unpaid" onclick="showEmpTab('unpaid')">💰 미수금</button>
+        <button class="tab-btn" id="empTabBtn-search" onclick="showEmpTab('search')">🔍 장부 검색</button>
+        <button class="tab-btn" id="empTabBtn-vehicle" onclick="showEmpTab('vehicle')">🚗 차량관리</button>
+        <button class="tab-btn" id="empTabBtn-album" onclick="showEmpTab('album')">📷 공유 앨범</button>
+        <button class="tab-btn" id="empTabBtn-changelog" onclick="showEmpTab('changelog')">🔔 업데이트 내역</button>
       </div>
 
       <!-- 직원 대시보드 (2026-10-01, V55.25). 사장님 원칙: 본인 것만, 다른 직원은 언급도 하지 않는다.
@@ -785,22 +790,22 @@
         </div>
       </div>
       <div class="tabs">
-        <button class="tab-btn tab-btn-primary active" id="tabBtn-dash" onclick="showAdminTab('dash')">대시보드</button>
-        <button class="tab-btn tab-btn-primary" id="tabBtn-input" onclick="showAdminTab('input')">기록 입력</button>
-        <button class="tab-btn tab-btn-primary" id="tabBtn-cal" onclick="showAdminTab('cal')">캘린더</button>
-        <button class="tab-btn tab-btn-primary" id="tabBtn-incentive" onclick="showAdminTab('incentive')">인센티브 관리</button>
+        <button class="tab-btn tab-btn-primary active" id="tabBtn-dash" onclick="showAdminTab('dash')">🏠 대시보드</button>
+        <button class="tab-btn tab-btn-primary" id="tabBtn-input" onclick="showAdminTab('input')">📝 기록 입력</button>
+        <button class="tab-btn tab-btn-primary" id="tabBtn-cal" onclick="showAdminTab('cal')">📅 캘린더</button>
+        <button class="tab-btn tab-btn-primary" id="tabBtn-incentive" onclick="showAdminTab('incentive')">🎁 인센티브 관리</button>
         <button class="tab-btn" id="tabBtn-referral" onclick="showAdminTab('referral')">💱 지사간 인센티브</button>
-        <button class="tab-btn" id="tabBtn-search" onclick="showAdminTab('search')">장부 검색</button>
-        <button class="tab-btn" id="tabBtn-album" onclick="showAdminTab('album')">공유 앨범</button>
-        <button class="tab-btn" id="tabBtn-docs" onclick="showAdminTab('docs')">견적서·거래명세서 관리</button>
-        <button class="tab-btn" id="tabBtn-stock" onclick="showAdminTab('stock')">재고·단가 관리</button>
-        <button class="tab-btn" id="tabBtn-doorlock" onclick="showAdminTab('doorlock')">도어락 가격표</button>
-        <button class="tab-btn" id="tabBtn-vehicle" onclick="showAdminTab('vehicle')">차량관리</button>
+        <button class="tab-btn" id="tabBtn-search" onclick="showAdminTab('search')">🔍 장부 검색</button>
+        <button class="tab-btn" id="tabBtn-album" onclick="showAdminTab('album')">📷 공유 앨범</button>
+        <button class="tab-btn" id="tabBtn-docs" onclick="showAdminTab('docs')">🧾 견적서·거래명세서 관리</button>
+        <button class="tab-btn" id="tabBtn-stock" onclick="showAdminTab('stock')">📦 재고·단가 관리</button>
+        <button class="tab-btn" id="tabBtn-doorlock" onclick="showAdminTab('doorlock')">🔐 도어락 가격표</button>
+        <button class="tab-btn" id="tabBtn-vehicle" onclick="showAdminTab('vehicle')">🚗 차량관리</button>
         <button class="tab-btn" id="tabBtn-expense" onclick="showAdminTab('expense')">💸 지출관리</button>
         <button class="tab-btn" id="tabBtn-blogreq" onclick="showAdminTab('blogreq')">✍️ 블로그 요청</button>
-        <button class="tab-btn" id="tabBtn-users" onclick="showAdminTab('users')">사용자 관리</button>
+        <button class="tab-btn" id="tabBtn-users" onclick="showAdminTab('users')">👥 사용자 관리</button>
         <button class="tab-btn tab-btn-stats" id="tabBtn-stats" onclick="showAdminTab('stats')">📊 통계</button>
-        <button class="tab-btn" id="tabBtn-changelog" onclick="showAdminTab('changelog')">업데이트 내역</button>
+        <button class="tab-btn" id="tabBtn-changelog" onclick="showAdminTab('changelog')">🔔 업데이트 내역</button>
       </div>
 
       <div id="adminTab-dash">
@@ -2383,9 +2388,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V57.2"></script>
-<script src="script2.js?v=V57.2"></script>
-<script src="script3.js?v=V57.2"></script>
+<script src="script1.js?v=V57.3"></script>
+<script src="script2.js?v=V57.3"></script>
+<script src="script3.js?v=V57.3"></script>
 </body>
 </html>
 
