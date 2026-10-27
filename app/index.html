@@ -300,6 +300,8 @@
         <h1 id="empGreeting">출장 기록 입력</h1>
         <span id="appVersionBadge1" style="font-size:12px;color:#22c55e;cursor:pointer;" onclick="showWhatsNewModal()" title="업데이트 내역 다시 보기"></span>
         <button class="btn-primary" onclick="completeTodayLedger()">오늘 장부 작성 완료</button>
+        <!-- V57 앱 사용설명서(직원용 PDF). 관리자 화면 버튼과 같은 방식 — 같은 파일 ID에 덮어쓰므로 링크는 그대로 -->
+        <button class="btn-outline" onclick="window.open('https://drive.google.com/file/d/1Oi7Wms2wmXFPTTYNaEE7SEHz4h8xK58W/view', '_blank')" title="캡틴자동문 앱 V57 설명서 (직원용 PDF)">📗 V57 설명서</button>
         <button class="btn-outline" onclick="logout()">로그아웃</button>
       </div>
       <div class="tabs">
@@ -732,7 +734,7 @@
       <div class="top-bar">
         <h1>📊 관리자 대시보드 <span id="appVersionBadge2" style="font-size:12px;color:#22c55e;font-weight:normal;cursor:pointer;" onclick="showWhatsNewModal()" title="업데이트 내역 다시 보기"></span>
           <span id="loadTimeBadge" class="muted" style="font-size:11px;font-weight:normal;" title="화면 = 앱 화면이 뜨기까지 / 데이터 = 그 뒤 대시보드 숫자가 채워지기까지"></span></h1>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
           <select id="branchSelect" class="hidden" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;" onchange="switchBranch(this.value)">
             <option value="">본사</option>
             <!-- 지점들은 Script1 fillBranchSelects_가 지점 목록(서버 BRANCHES_)으로 채운다 -->
@@ -740,6 +742,8 @@
           <!-- 교육자료: 관리자 화면(본사·지점 관리자 = 점주)에만 있다. 구글 드라이브 점주용 PDF(링크 있는 사람 누구나 보기)를 연다.
                내용을 고치면 15_교육자료의 드라이브올리기.js가 같은 파일 ID에 덮어쓰므로 이 링크는 바꿀 필요 없다. -->
           <button class="btn-outline" onclick="window.open('https://drive.google.com/file/d/1kFBzYiFuOSNUBOFr4TPOksW4Lm2QvfMN/view', '_blank')" title="캡틴자동문 교육자료 (점주용 전체 PDF)">📘 교육자료</button>
+          <!-- V57 앱 사용설명서(지사 관리자용 PDF, 본사/사용설명서 폴더). 다시 만들면 사용설명서/드라이브올리기.cjs가 같은 파일 ID에 덮어쓴다. -->
+          <button class="btn-outline" onclick="window.open('https://drive.google.com/file/d/1ewjZetpzjKMm2oqycgBBo-_HToDKXXKn/view', '_blank')" title="캡틴자동문 앱 V57 설명서 (지사 관리자용 PDF)">📗 V57 설명서</button>
             <button class="btn-primary" onclick="completeIntegratedLedger()">작성완료</button>
           <button class="btn-outline" onclick="logout()">로그아웃</button>
         </div>
@@ -2343,9 +2347,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V56.24"></script>
-<script src="script2.js?v=V56.24"></script>
-<script src="script3.js?v=V56.24"></script>
+<script src="script1.js?v=V57.0"></script>
+<script src="script2.js?v=V57.0"></script>
+<script src="script3.js?v=V57.0"></script>
 </body>
 </html>
 
