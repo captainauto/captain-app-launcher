@@ -74,6 +74,29 @@
     /* 좁은 화면에서 버튼 글씨가 한 글자씩 세로로 쌓이던 문제 방지 — 넘치면 아래로 줄바꿈되게 하고,
        버튼 안 글자는 절대 줄바꿈 안 되게(nowrap) 고정 */
     .top-bar button, .top-bar select { white-space: nowrap; }
+    /* 관리자 윗줄 묶음(지점선택+버튼4). 예전엔 HTML style 속성에 있던 것 — 아래 미디어쿼리가 덮어쓸 수 있게 여기로 옮겼다. */
+    .admin-top-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+    #branchSelect { padding: 6px 10px; }
+    /* V57.2 PC·태블릿(521px 이상) 윗줄: 제목 아래 한 줄 [지점선택(남는 폭)][교육자료][V57 설명서][작성완료][로그아웃]으로
+       좌우 끝을 꽉 채운다. 예전엔 전역 select{width:100%} 때문에 지점선택이 혼자 한 줄을 먹고 버튼들이 다음 줄 오른쪽에 쏠렸다.
+       align-items:stretch로 지점선택 칸 높이를 버튼과 똑같이 맞춘다. 컨테이너가 최대 880px라 그보다 넓은 화면도 같은 모양이다.
+       지점 관리자(지점선택 숨김)는 버튼 4개가 같은 폭으로 한 줄을 나눠 채운다. */
+    @media (min-width: 521px) {
+      .admin-top-actions { width: 100%; flex-wrap: nowrap; align-items: stretch; }
+      .admin-top-actions > #branchSelect { flex: 1 1 120px; width: auto; min-width: 90px; padding: 0 12px; }
+      .admin-top-actions > button { flex: 0 0 auto; }
+      .admin-top-actions > #branchSelect.hidden ~ button { flex: 1 1 0; }
+      #adminView > .top-bar > h1 { margin-bottom: 4px; }
+      /* 직원 화면: 제목·버전은 왼쪽, 버튼 3개는 오른쪽에 붙여 한 묶음으로(사이 간격이 제각각 벌어지던 것 방지) */
+      #employeeView > .top-bar { justify-content: flex-start; }
+      #employeeView > .top-bar > .btn-primary { margin-left: auto; }
+    }
+    /* 521~700px(작은 태블릿·좁은 창)은 버튼 여백·글씨를 조금 줄여 지점선택 칸 자리를 남긴다.
+       직원 버튼은 제목 아래 줄로 내려가면 그 줄을 나눠 채운다. */
+    @media (min-width: 521px) and (max-width: 700px) {
+      .admin-top-actions > button, #employeeView > .top-bar > button { padding: 10px 10px; font-size: 14px; }
+      #employeeView > .top-bar > button { flex: 1 1 auto; }
+    }
     /* V57.1 휴대폰(520px 이하) 관리자 윗줄: [지점선택(남는 폭)][로그아웃] / [교육자료][설명서][작성완료] 두 줄.
        전역 select{width:100%} 때문에 지점선택이 한 줄을 다 먹고 로그아웃이 혼자 셋째 줄로 밀리던 것을 고친다.
        지점선택 칸의 기준 폭을 (전체 - 140px)로 잡아 로그아웃만 옆에 붙고 나머지 버튼은 다음 줄로 간다.
@@ -747,8 +770,8 @@
       <div class="top-bar">
         <h1>📊 관리자 대시보드 <span id="appVersionBadge2" style="font-size:12px;color:#22c55e;font-weight:normal;cursor:pointer;" onclick="showWhatsNewModal()" title="업데이트 내역 다시 보기"></span>
           <span id="loadTimeBadge" class="muted" style="font-size:11px;font-weight:normal;" title="화면 = 앱 화면이 뜨기까지 / 데이터 = 그 뒤 대시보드 숫자가 채워지기까지"></span></h1>
-        <div class="admin-top-actions" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
-          <select id="branchSelect" class="hidden" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;" onchange="switchBranch(this.value)">
+        <div class="admin-top-actions">
+          <select id="branchSelect" class="hidden" onchange="switchBranch(this.value)">
             <option value="">본사</option>
             <!-- 지점들은 Script1 fillBranchSelects_가 지점 목록(서버 BRANCHES_)으로 채운다 -->
           </select>
@@ -2360,9 +2383,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V57.1"></script>
-<script src="script2.js?v=V57.1"></script>
-<script src="script3.js?v=V57.1"></script>
+<script src="script1.js?v=V57.2"></script>
+<script src="script2.js?v=V57.2"></script>
+<script src="script3.js?v=V57.2"></script>
 </body>
 </html>
 
