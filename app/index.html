@@ -2029,6 +2029,36 @@
     .htx-search input { flex: 1 1 auto; width: auto; padding: 6px 8px; font-size: 13px; }
     .htx-search button { flex: 0 0 auto; }
     .htx-sum td, .htx-sum th { font-size: 12px; padding: 4px 6px; }
+    /* V57.5 전자세금계산서 양식(사장님이 준 양식 그대로). 휴대폰은 가로로 밀어서 본다(.etx-wrap). */
+    .etx-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 8px 0 4px; }
+    .etx { min-width: 700px; border: 2px solid #3c4257; font-size: 12px; background: #fff; }
+    .etx table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+    .etx th, .etx td { border: 1px solid #c9ccd6; padding: 3px 4px; vertical-align: middle; }
+    .etx th { font-weight: 600; text-align: center; line-height: 1.15; }
+    .etx input, .etx select { width: 100%; margin: 0; padding: 3px 4px; font-size: 12px; border: 1px solid #d6d9e0; border-radius: 3px; box-sizing: border-box; background: #fff; }
+    .etx input.etx-num { text-align: right; }
+    .etx-title { text-align: center; font-size: 20px; font-weight: 800; letter-spacing: 6px; padding: 6px 0; border-bottom: 2px solid #3c4257; }
+    .etx-parties { display: flex; }
+    .etx-party { flex: 1 1 50%; display: flex; min-width: 0; }
+    .etx-party table th { width: 56px; }
+    .etx-side { flex: 0 0 22px; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 700; line-height: 1.4; }
+    .etx-sup { border-top: 2px solid #e53935; border-right: 1px solid #3c4257; }
+    .etx-sup .etx-side { background: #f6c9c9; color: #c62828; }
+    .etx-sup th { background: #fde8e8; color: #c62828; border-color: #f2b8b8; }
+    .etx-sup td { border-color: #f2b8b8; }
+    .etx-buy { border-top: 2px solid #3b5bdb; }
+    .etx-buy .etx-side { background: #c9d6f6; color: #1a4fd8; }
+    .etx-buy th { background: #e8eefc; color: #1a4fd8; border-color: #b8c6f2; }
+    .etx-buy td { border-color: #b8c6f2; }
+    .etx-big { font-size: 15px; font-weight: 700; }
+    .etx-req { color: #d93025; margin-left: 1px; }
+    .etx-grid { border-top: 2px solid #3c4257; }
+    .etx-grid th { background: #f1f3f6; }
+    .etx-amt { text-align: right; font-variant-numeric: tabular-nums; }
+    .etx-claim { text-align: center; font-weight: 700; white-space: nowrap; }
+    .etx-claim select { width: auto; display: inline-block; }
+    .etx-hint { display: none; font-size: 11px; color: #888; margin: 6px 0 -4px; }
+    @media (max-width: 760px) { .etx-hint { display: block; } }
   </style>
   <div id="hometaxModal" class="modal-backdrop hidden">
     <div class="modal" style="max-width:860px;">
@@ -2388,9 +2418,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V57.3"></script>
-<script src="script2.js?v=V57.3"></script>
-<script src="script3.js?v=V57.3"></script>
+<script src="script1.js?v=V57.5"></script>
+<script src="script2.js?v=V57.5"></script>
+<script src="script3.js?v=V57.5"></script>
 </body>
 </html>
 
