@@ -157,6 +157,8 @@
     th, td { padding: 8px 6px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
     th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: #fff; }
     .table-wrap { overflow-x: auto; max-height: 500px; }
+    /* V57.7 대시보드 입금 미확인 표: 칸 여백을 줄여 PC에서 완료 버튼까지 한 화면에 */
+    .unpaid-tbl th, .unpaid-tbl td { padding: 6px 4px; overflow: hidden; text-overflow: ellipsis; }
     .mat-table th, .mat-table td { text-align: center; }
     .mat-table th.col-div, .mat-table td.col-div { border-right: 2px solid var(--border); }
     .mat-table td.mat-blank { color: var(--muted); }
@@ -887,18 +889,20 @@
             <div class="msf" style="min-width:120px;"><button type="button" class="msf-btn" id="dashUnpaidPayFilter_btn" onclick="msfToggle_('dashUnpaidPayFilter')">전체 입금형태</button><div class="msf-panel" id="dashUnpaidPayFilter_panel"></div></div>
           </div>
           <div class="table-wrap" style="margin-top:8px;">
-            <table style="table-layout:fixed;">
+            <!-- V57.7: 열 폭 합계가 866px이라 PC 카드 안쪽 폭(808px)을 넘어 '완료' 버튼이 가로 스크롤 뒤로 숨었다.
+                 날짜를 '11-03 (화)'로 줄이고 칸 여백(8px 6px→6px 4px)과 각 열을 덜어 합계 800px로 맞춘다(808px 안).
+                 휴대폰은 표가 800px 그대로라 지금처럼 가로로 밀어서 본다. 글자 크기(13px)는 그대로. -->
+            <table class="unpaid-tbl" style="table-layout:fixed;">
               <thead><tr>
-                <!-- 날짜에 요일이 붙어(V55.7) '2026-09-08 (월)'이 76px을 넘쳐 주소 칸을 덮었다 — 날짜를 넓히고 주소·내용에서 덜어 표 전체 폭은 그대로 -->
-                <th style="width:110px;white-space:nowrap;">날짜</th>
-                <th style="width:173px;">주소</th>
-                <th style="width:173px;">내용</th>
-                <th style="width:60px;">출장자</th>
-                <th style="width:60px;">출처</th>
-                <th style="width:76px;white-space:nowrap;">금액</th>
-                <th style="width:36px;white-space:nowrap;">형태</th>
-                <th style="width:114px;">비고</th>
-                <th style="width:64px;"></th>
+                <th style="width:80px;white-space:nowrap;">날짜</th>
+                <th style="width:164px;">주소</th>
+                <th style="width:170px;">내용</th>
+                <th style="width:56px;">출장자</th>
+                <th style="width:62px;">출처</th>
+                <th style="width:78px;white-space:nowrap;">금액</th>
+                <th style="width:34px;white-space:nowrap;">형태</th>
+                <th style="width:104px;">비고</th>
+                <th style="width:52px;"></th>
               </tr></thead>
               <tbody id="dashUnpaidBody"></tbody>
             </table>
@@ -2067,7 +2071,8 @@
       <h3>📤 홈택스 업로드 엑셀 만들기</h3>
       <div class="muted" style="font-size:12px;margin-bottom:10px;">
         발급할 건을 고르고, 건마다 거래처(등록번호·상호·대표자·이메일)를 <b>확인 체크</b>해야 엑셀이 만들어집니다.
-        기존 거래처라도 대표자·담당 이메일이 바뀌었을 수 있어요. 발급은 홈택스에서 직접 하시고, 발급한 뒤 대시보드에서 <b>완료</b>를 눌러주세요.
+        기존 거래처라도 대표자·담당 이메일이 바뀌었을 수 있어요. <b>엑셀이 만들어지면 그 엑셀에 들어간 건은 자동으로 계산서 완료</b>로 바뀝니다(대시보드에서 따로 누를 필요 없음) — 만든 엑셀은 꼭 홈택스 일괄발급에 올려 발급해 주세요.
+        잘못 들어간 건은 장부 시트에서 그 건의 "세금계산서" 칸 글자색을 검정으로 바꾸면 미발급 목록에 다시 나옵니다.
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:12px;">
         <span class="muted" id="htxClientInfo"></span>
@@ -2419,9 +2424,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V57.6"></script>
-<script src="script2.js?v=V57.6"></script>
-<script src="script3.js?v=V57.6"></script>
+<script src="script1.js?v=V57.9"></script>
+<script src="script2.js?v=V57.9"></script>
+<script src="script3.js?v=V57.9"></script>
 </body>
 </html>
 
