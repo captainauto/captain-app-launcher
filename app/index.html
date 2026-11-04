@@ -843,13 +843,12 @@
         <div class="card">
           <div class="row" style="align-items:flex-start;flex-wrap:wrap;">
             <div style="flex:1;min-width:280px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <strong>세금계산서 (미발급)</strong>
-                <span>
-                  <span id="dashTaxCount" class="muted"></span>
-                  <button class="btn-primary" style="padding:5px 10px;font-size:12px;margin-left:6px;" onclick="openHometaxModal()">📤 홈택스 엑셀</button>
-                  <a href="https://www.hometax.go.kr" target="_blank" rel="noopener" class="btn-outline" style="display:inline-block;padding:5px 10px;font-size:12px;text-decoration:none;margin-left:6px;">홈택스 바로가기 ↗</a>
-                </span>
+              <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;min-height:30px;">
+                <strong style="white-space:nowrap;">세금계산서 (미발급)</strong>
+                <span style="flex:1 1 0;min-width:0;"></span>
+                <span id="dashTaxCount" class="muted" style="white-space:nowrap;"></span>
+                <button class="btn-primary" style="flex:none;width:auto;padding:4px 8px;font-size:12px;white-space:nowrap;" onclick="openHometaxModal()">📤 홈택스 엑셀</button>
+                <a href="https://www.hometax.go.kr" target="_blank" rel="noopener" class="btn-outline" title="홈택스 바로가기" style="flex:none;margin-left:auto;display:inline-block;padding:4px 8px;font-size:12px;text-decoration:none;white-space:nowrap;">홈택스 ↗</a>
               </div>
               <div class="table-wrap" style="margin-top:8px;">
                 <table>
@@ -859,8 +858,8 @@
               </div>
             </div>
             <div style="flex:1;min-width:280px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <strong>현금 미수령</strong>
+              <div style="display:flex;justify-content:space-between;align-items:center;min-height:30px;">
+                <strong style="white-space:nowrap;">현금 미수령</strong>
                 <span id="dashCashCount" class="muted"></span>
               </div>
               <div class="table-wrap" style="margin-top:8px;">
@@ -2424,9 +2423,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V57.11"></script>
-<script src="script2.js?v=V57.11"></script>
-<script src="script3.js?v=V57.11"></script>
+<script src="script1.js?v=V57.12"></script>
+<script src="script2.js?v=V57.12"></script>
+<script src="script3.js?v=V57.12"></script>
 </body>
 </html>
 
