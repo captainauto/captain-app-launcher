@@ -800,12 +800,12 @@
         <button class="tab-btn" id="tabBtn-search" onclick="showAdminTab('search')">🔍 장부 검색</button>
         <button class="tab-btn" id="tabBtn-album" onclick="showAdminTab('album')">📷 공유 앨범</button>
         <button class="tab-btn" id="tabBtn-docs" onclick="showAdminTab('docs')">🧾 견적서·거래명세서 관리</button>
-        <button class="tab-btn" id="tabBtn-stock" onclick="showAdminTab('stock')">📦 재고·단가 관리</button>
+        <button class="tab-btn hidden" id="tabBtn-stock" onclick="showAdminTab('stock')">📦 재고·단가 관리</button>
         <button class="tab-btn" id="tabBtn-doorlock" onclick="showAdminTab('doorlock')">🔐 도어락 가격표</button>
         <button class="tab-btn" id="tabBtn-vehicle" onclick="showAdminTab('vehicle')">🚗 차량관리</button>
         <button class="tab-btn" id="tabBtn-expense" onclick="showAdminTab('expense')">💸 지출관리</button>
         <button class="tab-btn" id="tabBtn-blogreq" onclick="showAdminTab('blogreq')">✍️ 블로그 요청</button>
-        <button class="tab-btn" id="tabBtn-users" onclick="showAdminTab('users')">👥 사용자 관리</button>
+        <button class="tab-btn hidden" id="tabBtn-users" onclick="showAdminTab('users')">👥 사용자 관리</button>
         <button class="tab-btn tab-btn-stats" id="tabBtn-stats" onclick="showAdminTab('stats')">📊 통계</button>
         <button class="tab-btn" id="tabBtn-changelog" onclick="showAdminTab('changelog')">🔔 업데이트 내역</button>
       </div>
@@ -1122,7 +1122,7 @@
             <input id="sortDate" type="date" style="flex:1;" />
             <button class="btn-outline" style="flex:1;" onclick="doSortDay()">이 날짜 출장자순 정렬</button>
           </div>
-          <p class="muted" style="font-size:12px;margin-top:0;">선택한 날짜의 기록을 김승우 → 김영민 → 노휘래(사용자 등록 순서)로 재정렬하고 순수익 누계를 다시 계산합니다.</p>
+          <p class="muted" style="font-size:12px;margin-top:0;">선택한 날짜의 기록을 출장자 순서(사용자 관리에 등록된 순서)로 재정렬하고 순수익 누계를 다시 계산합니다.</p>
           <div class="cal-grid" id="calHead"></div>
           <div class="cal-grid" id="calGrid" style="margin-top:6px;"></div>
         </div>
@@ -1339,7 +1339,8 @@
           </p>
         </div>
 
-        <div class="card">
+        <!-- 본사 '회계자료' 폴더 하나뿐이라 본사 관리자만(V57.15). Script3 loadExpenseTab이 역할 '관리자'일 때만 연다 -->
+        <div class="card hidden" id="impCard">
           <div class="row" style="align-items:center;flex-wrap:wrap;">
             <strong style="flex:1;min-width:160px;">📥 카드·통장 자동 수집</strong>
             <button class="btn-outline" style="flex:0 0 auto;padding:4px 12px;font-size:12px;white-space:nowrap;" onclick="loadImportFolders()">🔄 폴더 확인</button>
@@ -2370,12 +2371,13 @@
           <label style="display:flex;align-items:center;gap:4px;margin:0;"><input id="doc_attachBizReg" type="checkbox" disabled />사업자등록증 첨부</label>
         </div>
         <div id="docEmailResult" style="margin-top:8px;"></div>
-        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+        <!-- 명함·통장사본 바꾸기는 관리자만(V57.15) — Script1 enterApp이 관리자일 때 연다 -->
+        <div class="hidden" id="docBizCardBox" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
           <label style="margin:0;font-size:12px;">명함 사진 (최초 1회만 등록하면 앞으로 모든 이메일 본문 아래에 자동으로 붙어요)</label>
           <input id="doc_bizCardFile" type="file" accept="image/*" onchange="handleBizCardUpload(this)" style="margin-top:4px;" />
           <div id="bizCardStatus" class="muted" style="margin-top:4px;font-size:12px;"></div>
         </div>
-        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+        <div class="hidden" id="docBankBookBox" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
           <label style="margin:0;font-size:12px;">통장사본 (지점별 1회 등록 — 위 체크박스로 첨부 여부 선택)</label>
           <input id="doc_bankBookFile" type="file" accept="image/*,.pdf" onchange="handleBankBookUpload(this)" style="margin-top:4px;" />
           <div id="bankBookStatus" class="muted" style="margin-top:4px;font-size:12px;"></div>
@@ -2423,9 +2425,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V57.13"></script>
-<script src="script2.js?v=V57.13"></script>
-<script src="script3.js?v=V57.13"></script>
+<script src="script1.js?v=V57.15"></script>
+<script src="script2.js?v=V57.15"></script>
+<script src="script3.js?v=V57.15"></script>
 </body>
 </html>
 
