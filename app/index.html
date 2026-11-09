@@ -832,6 +832,10 @@
           <div id="dashBranchTrendLegend" style="margin-top:8px;font-size:12px;"></div>
           <div id="dashBranchTrendBody" style="margin-top:10px;"></div>
         </div>
+        <div class="card hidden" id="dashBranchMonthCard">
+          <strong>이달 본사·지사별 총매출·총마진</strong>
+          <div id="dashBranchMonthBody" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px;"></div>
+        </div>
         <div class="card">
           <strong>오늘 직원별 실적</strong>
           <div id="dashTodayAgents" style="margin-top:8px;"></div>
@@ -2407,6 +2411,22 @@
     </div>
   </div>
 
+  <!-- V57.17: 새 기록의 날짜가 오늘이 아닐 때 저장 전에 한 번 묻는다(Script1 doSubmit). 뒤로가기는 취소와 같다. -->
+  <div id="entryDateWarnModal" class="modal-backdrop hidden" data-close-fn="cancelEntryDateWarn" style="z-index:160;">
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="entryDateWarnTitle" style="max-width:360px;border-top:6px solid #dc2626;">
+      <h3 id="entryDateWarnTitle" style="margin:0 0 12px;color:#b91c1c;">⚠️ 오늘이 아닌 날짜입니다</h3>
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;font-size:15px;line-height:1.8;">
+        <div style="display:flex;justify-content:space-between;gap:12px;"><span>선택한 날짜</span><b id="entryDateWarnPicked" style="color:#b91c1c;"></b></div>
+        <div style="display:flex;justify-content:space-between;gap:12px;"><span>오늘 날짜</span><b id="entryDateWarnToday"></b></div>
+      </div>
+      <p style="margin:14px 0 16px;font-weight:600;color:#b91c1c;">다른 날짜인데 저장하시겠습니까?</p>
+      <div class="row">
+        <button id="entryDateWarnSave" style="background:#dc2626;color:#fff;" onclick="confirmEntryDateWarn()">저장</button>
+        <button id="entryDateWarnCancel" class="btn-outline" onclick="cancelEntryDateWarn()">취소</button>
+      </div>
+    </div>
+  </div>
+
   <div id="priceModal" class="modal-backdrop hidden" data-close-fn="skipPriceModal">
     <div class="modal">
       <h3>자재단가에 추가</h3>
@@ -2425,9 +2445,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V57.16"></script>
-<script src="script2.js?v=V57.16"></script>
-<script src="script3.js?v=V57.16"></script>
+<script src="script1.js?v=V57.17"></script>
+<script src="script2.js?v=V57.17"></script>
+<script src="script3.js?v=V57.17"></script>
 </body>
 </html>
 
