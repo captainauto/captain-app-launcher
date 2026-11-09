@@ -1417,73 +1417,135 @@
       </div>
 
       <div id="adminTab-stock" class="hidden">
-        <div class="card">
-          <strong>위치 설정 (차량·사무실·창고)</strong>
-          <p class="muted" style="margin-top:4px;">재고를 보관하는 위치를 관리합니다. '차량' 유형은 담당 직원 이름을 지정하면, 그 직원이 장부에서 '내 차'로 차감할 수 있습니다.</p>
-          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
-            <input id="nl_name" placeholder="위치명 (예: 김승우차)" style="flex:1;min-width:110px;" />
-            <select id="nl_type" style="flex:1;min-width:90px;">
-              <option value="공용">공용 (사무실/창고)</option>
-              <option value="차량">차량 (직원별)</option>
-            </select>
-            <input id="nl_owner" placeholder="담당자 (차량일 때)" style="flex:1;min-width:90px;" />
-            <button class="btn-primary" onclick="addNewLocation()">위치 추가</button>
+        <style>
+          .iv-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+          .iv-head strong { font-size:18px; }
+          .iv-badge { padding:4px 10px; border-radius:14px; background:#eef2ff; color:#3730a3; font-size:13px; font-weight:700; }
+          .iv-seg { display:inline-flex; background:#e5e7eb; border-radius:10px; padding:3px; margin-left:auto; }
+          .iv-seg button { padding:7px 14px; border-radius:8px; font-size:14px; color:#4b5563; background:transparent; white-space:nowrap; font-weight:500; }
+          .iv-seg button.on { background:#fff; color:#111827; font-weight:700; box-shadow:0 1px 2px rgba(0,0,0,.12); }
+          .iv-note { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; border-radius:10px; padding:9px 12px; font-size:13px; margin-bottom:10px; }
+          .iv-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+          .iv-kpi { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:10px 14px; }
+          .iv-kpi b { display:block; font-size:24px; line-height:1.2; font-variant-numeric:tabular-nums; }
+          .iv-kpi small { color:#6b7280; font-size:13px; }
+          .iv-kpi.alert { border-color:#fecaca; background:#fef2f2; }
+          .iv-kpi.alert b { color:#b91c1c; }
+          .iv-tools { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+          .iv-tools input { flex:1; min-width:0; width:auto; height:40px; margin:0; }
+          .iv-btn { height:40px; padding:0 14px; border-radius:8px; border:1px solid #d1d5db; background:#fff; color:#111827; font-size:14px; font-weight:600; white-space:nowrap; flex:none; }
+          .iv-btn.warn { border-color:#fca5a5; color:#b91c1c; background:#fff; }
+          .iv-btn.warn.on { background:#b91c1c; color:#fff; }
+          .iv-btn.pri { background:#2563eb; border-color:#2563eb; color:#fff; }
+          .iv-btn.del { color:#b91c1c; border-color:#fca5a5; }
+          .iv-chips { display:flex; gap:6px; overflow-x:auto; margin-bottom:6px; padding-bottom:2px; }
+          .iv-chip { padding:6px 11px; border-radius:16px; background:#fff; border:1px solid #e5e7eb; font-size:13px; white-space:nowrap; color:#374151; font-weight:500; flex:none; }
+          .iv-chip.on { background:#111827; border-color:#111827; color:#fff; font-weight:700; }
+          .iv-chip.sub.on { background:#dbeafe; border-color:#93c5fd; color:#1e40af; }
+          .iv-box { background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow-x:auto; margin-top:10px; }
+          table.iv { width:100%; border-collapse:collapse; font-size:14px; }
+          table.iv th { background:#f9fafb; color:#6b7280; font-size:12px; font-weight:600; padding:9px 8px; text-align:right; border-bottom:1px solid #e5e7eb; white-space:nowrap; }
+          table.iv th:first-child, table.iv td:first-child { text-align:left; padding-left:14px; }
+          table.iv th.lf, table.iv td.lf { text-align:left; }
+          table.iv td { padding:9px 8px; border-bottom:1px solid #f3f4f6; text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+          table.iv td.nm { font-weight:600; white-space:normal; min-width:150px; }
+          table.iv td.mut { color:#6b7280; }
+          table.iv tr.it { cursor:pointer; }
+          table.iv tr.it:hover td { background:#f9fafb; }
+          table.iv tr.grp td { background:#f9fafb; font-size:12px; font-weight:700; color:#374151; text-align:left; padding:6px 14px; }
+          table.iv tr.low td:first-child { box-shadow:inset 3px 0 0 #dc2626; }
+          .iv-neg { color:#b91c1c; font-weight:700; }
+          .iv-up { color:#dc2626; font-weight:600; } .iv-down { color:#2563eb; font-weight:600; } .iv-same { color:#9ca3af; }
+          .iv-tag { display:inline-block; padding:2px 7px; border-radius:10px; font-size:12px; font-weight:700; background:#fee2e2; color:#b91c1c; }
+          .iv-ok { color:#9ca3af; font-size:12px; }
+          .iv-cards { display:none; margin-top:10px; }
+          .iv-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:11px 12px; margin-bottom:8px; cursor:pointer; }
+          .iv-card.low { border-left:4px solid #dc2626; }
+          .iv-card-top { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
+          .iv-card-top b { font-size:15px; line-height:1.3; }
+          .iv-qty { text-align:right; flex:none; font-size:20px; font-weight:800; line-height:1.1; font-variant-numeric:tabular-nums; }
+          .iv-qty small { display:block; font-size:11px; font-weight:500; color:#6b7280; }
+          .iv-card.low .iv-qty { color:#b91c1c; }
+          .iv-sub { font-size:12px; color:#6b7280; margin-top:3px; }
+          .iv-pos { display:flex; gap:5px; flex-wrap:wrap; margin-top:7px; align-items:center; }
+          .iv-pos i { font-style:normal; font-size:12px; background:#f3f4f6; border-radius:6px; padding:2px 7px; }
+          .iv-dim { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:120; }
+          .iv-editor { position:fixed; top:0; right:0; bottom:0; width:380px; max-width:100%; background:#fff; z-index:121; padding:16px; overflow-y:auto; box-shadow:-8px 0 30px rgba(0,0,0,.2); }
+          .iv-editor h3 { margin:0 0 10px; font-size:16px; padding-right:32px; }
+          .iv-close { position:absolute; top:10px; right:10px; background:transparent; padding:6px 10px; font-size:16px; color:#6b7280; }
+          .iv-f { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+          .iv-f label { font-size:12px; color:#6b7280; display:block; margin-bottom:3px; }
+          .iv-f input, .iv-f select { width:100%; height:38px; margin:0; font-size:15px; box-sizing:border-box; }
+          .iv-f .full { grid-column:1 / -1; }
+          .iv-sec { font-size:12px; font-weight:700; color:#374151; margin:14px 0 6px; }
+          .iv-hint { font-size:12px; color:#6b7280; margin-top:6px; }
+          .iv-actions { display:flex; gap:8px; margin-top:16px; }
+          .iv-actions button { flex:1; }
+          @media (max-width:760px) {
+            .iv-seg { margin-left:0; width:100%; }
+            .iv-seg button { flex:1; padding:7px 4px; font-size:13px; }
+            .iv-kpi { padding:8px 10px; } .iv-kpi b { font-size:20px; } .iv-kpi small { font-size:12px; }
+            .iv-box { display:none; } .iv-cards { display:block; }
+            .iv-tools .txt { display:none; }
+            .iv-editor { top:auto; left:0; right:0; bottom:0; width:auto; max-height:88vh; border-radius:16px 16px 0 0; box-shadow:0 -8px 30px rgba(0,0,0,.25); }
+          }
+        </style>
+
+        <div class="iv-head">
+          <strong>📦 재고·단가 관리</strong><span class="iv-badge" id="ivBranchBadge"></span>
+          <div class="iv-seg">
+            <button id="ivSeg-stock" class="on" onclick="ivShow('stock')">재고 현황</button>
+            <button id="ivSeg-price" onclick="ivShow('price')">자재단가</button>
+            <button id="ivSeg-loc" onclick="ivShow('loc')">보관 위치</button>
           </div>
-          <div id="locationList" style="margin-top:10px;"></div>
+        </div>
+        <div id="ivAlertNote"></div>
+
+        <div id="ivView-stock">
+          <div class="iv-kpis" id="ivKpis"></div>
+          <div class="iv-tools">
+            <input id="stockSearchInput" placeholder="🔍 품목·매입처 검색" oninput="renderStockTable()" />
+            <button class="iv-btn warn" id="ivLowBtn" onclick="ivToggleLow()">⚠️ 부족만<span class="txt">&nbsp;보기</span></button>
+            <button class="iv-btn pri" onclick="ivOpenStock(0)">＋<span class="txt">&nbsp;품목 추가</span></button>
+          </div>
+          <div class="iv-chips" id="ivMajChips"></div>
+          <div class="iv-chips" id="ivSubChips"></div>
+          <div class="iv-box"><table class="iv"><thead id="stockTableHead"></thead><tbody id="stockTableBody"></tbody></table></div>
+          <div class="iv-cards" id="ivStockCards"></div>
         </div>
 
-        <div class="card">
-          <strong>자재 추가 (자재단가 + 재고현황에 동시 반영)</strong>
-          <p class="muted" style="margin-top:4px;">현금가로 매입한 경우 결제구분을 "현금가"로 두면 세액/금액은 비워둔 채 저장됩니다. 재고 수량은 0으로 등록되며, 이후 재고현황에서 별도로 조정하세요.</p>
-          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
-            <input id="am_major" list="am_majorList" placeholder="대분류" style="flex:1;min-width:90px;" />
-            <datalist id="am_majorList"></datalist>
-            <input id="am_buyer" placeholder="매입처" style="flex:1;min-width:90px;" />
-            <input id="am_brand" placeholder="브랜드" style="flex:1;min-width:90px;" />
-            <input id="am_type" placeholder="타입" style="flex:1;min-width:90px;" />
+        <div id="ivView-price" class="hidden">
+          <p class="muted" style="margin:0 0 8px;">예전에 산 자재의 단가표입니다. 재고에 없는 자재도 그대로 남습니다. 가격이 바뀌면 이력이 쌓이고, 여기에는 최근 단가만 보입니다.</p>
+          <div class="iv-tools">
+            <input id="priceSearchInput" placeholder="🔍 매입처·제품명 검색" oninput="renderPriceTable()" />
+            <button class="iv-btn pri" onclick="ivOpenPrice(0)">＋<span class="txt">&nbsp;단가 추가</span></button>
           </div>
-          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
-            <input id="am_name" placeholder="제품명" style="flex:2;min-width:160px;" />
-            <select id="am_payType" style="flex:1;min-width:110px;" onchange="onPayTypeChange()">
-              <option value="vat">세금계산서</option>
-              <option value="cash">현금가</option>
-            </select>
-          </div>
-          <div class="row" style="margin-top:8px;flex-wrap:wrap;">
-            <input id="am_supply" type="number" placeholder="공급가(부가세 제외)" style="flex:1;min-width:100px;" oninput="onSupplyChange()" />
-            <input id="am_tax" type="number" placeholder="세액" style="flex:1;min-width:100px;" />
-            <input id="am_amount" type="number" placeholder="금액(부가세 포함)" style="flex:1;min-width:100px;" />
-          </div>
-          <div style="margin-top:8px;"><button class="btn-primary" onclick="addNewMaterial()">자재 추가</button></div>
+          <div class="iv-chips" id="ivPriceChips"></div>
+          <div class="iv-box"><table class="iv"><thead><tr>
+            <th>제품명</th><th class="lf">매입처</th><th class="lf">브랜드</th><th class="lf">타입</th><th>최근 단가</th><th>직전 대비</th><th class="lf">등록일</th><th></th>
+          </tr></thead><tbody id="priceTableBody"></tbody></table></div>
+          <div class="iv-cards" id="ivPriceCards"></div>
         </div>
 
-        <div class="card">
-          <strong>재고현황 (장부에서 선택되는 자재)</strong>
-          <p class="muted" style="margin-top:4px;">대분류 → 소분류 → 매입처 → 공급가(부가세 제외) → 금액(부가세 포함), 그리고 각 위치별 보유수량. 장부에서 자재 선택 시 원가는 항상 공급가(부가세 제외)를 씁니다.</p>
-          <input id="stockSearchInput" placeholder="🔍 품목 검색 (띄어쓰기 무시, 예: 도어클로저)" style="margin-top:10px;width:100%;" oninput="renderStockTable()" />
-          <div class="table-wrap" style="margin-top:12px;">
-            <table class="mat-table">
-              <thead id="stockTableHead"></thead>
-              <tbody id="stockTableBody"></tbody>
-            </table>
+        <div id="ivView-loc" class="hidden">
+          <div class="card">
+            <strong>보관 위치 (차량·사무실·창고)</strong>
+            <p class="muted" style="margin-top:4px;">이 지점의 보관 위치입니다. '차량'은 담당자 이름을 넣으면 그 직원이 기록 입력에서 '내 차'로 고를 수 있습니다. 수량이 남은 위치는 삭제되지 않습니다.</p>
+            <div class="row" style="margin-top:8px;flex-wrap:wrap;">
+              <input id="nl_name" placeholder="위치명" style="flex:1;min-width:110px;" />
+              <select id="nl_type" style="flex:1;min-width:90px;">
+                <option value="공용">공용 (사무실/창고)</option>
+                <option value="차량">차량 (직원별)</option>
+              </select>
+              <input id="nl_owner" placeholder="담당자 (차량일 때)" style="flex:1;min-width:90px;" />
+              <button class="btn-primary" onclick="addNewLocation()">위치 추가</button>
+            </div>
+            <div id="locationList" style="margin-top:10px;"></div>
           </div>
         </div>
 
-        <div class="card">
-          <strong>자재단가 (단가 참고용 마스터)</strong>
-          <p class="muted" style="margin-top:4px;">보유 여부와 무관한 단가 기록. 위 폼으로 등록하거나, 장부에서 직접 기재한 자재가 자동 누적됩니다.</p>
-          <input id="priceSearchInput" placeholder="🔍 품목 검색 (띄어쓰기 무시, 예: 도어클로저)" style="margin-top:10px;width:100%;" oninput="renderPriceTable()" />
-          <div class="table-wrap" style="margin-top:12px;">
-            <table class="mat-table">
-              <thead><tr>
-                <th>매입처</th><th>브랜드</th><th class="col-div">타입</th>
-                <th>제품명</th><th>공급가</th><th>세액</th><th class="col-div">금액</th>
-                <th>등록일</th><th>등록자</th><th></th>
-              </tr></thead>
-              <tbody id="priceTableBody"></tbody>
-            </table>
-          </div>
-        </div>
+        <div id="ivDim" class="iv-dim hidden" onclick="ivClose()"></div>
+        <div id="ivEditor" class="iv-editor hidden"></div>
       </div>
 
       <div id="adminTab-doorlock" class="hidden">
@@ -2445,9 +2507,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V57.17"></script>
-<script src="script2.js?v=V57.17"></script>
-<script src="script3.js?v=V57.17"></script>
+<script src="script1.js?v=V57.18"></script>
+<script src="script2.js?v=V57.18"></script>
+<script src="script3.js?v=V57.18"></script>
 </body>
 </html>
 
