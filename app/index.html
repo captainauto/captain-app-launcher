@@ -2418,6 +2418,12 @@
           <button id="docItemCancelBtn" class="btn-outline hidden" style="flex:1;white-space:nowrap;" onclick="cancelDocItemEdit()">취소</button>
         </div>
         <div id="docItemList" style="margin-top:8px;"></div>
+        <!-- 전역 input{width:100%} 함정 — 체크박스 스타일을 되돌린다(blogReqSelectAll과 같은 방식) -->
+        <label style="display:flex;align-items:center;justify-content:flex-end;gap:6px;margin:8px 0 0;font-size:13px;color:var(--text);cursor:pointer;">
+          <input id="doc_vatExcluded" type="checkbox" onchange="renderDocItems()"
+                 style="width:auto;height:auto;padding:0;border:none;background:none;border-radius:0;margin:0;flex:0 0 auto;" />
+          <span style="white-space:nowrap;flex:0 0 auto;">세액 제외</span> <span class="muted" style="font-size:11px;">(부가세 없이 공급가액만 — 세금계산서·카드 결제 아닐 때)</span>
+        </label>
         <div id="docItemTotal" class="muted" style="margin-top:6px;text-align:right;"></div>
       </div>
       <div style="margin-top:16px;">
@@ -2508,9 +2514,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V57.20"></script>
-<script src="script2.js?v=V57.20"></script>
-<script src="script3.js?v=V57.20"></script>
+<script src="script1.js?v=V57.21"></script>
+<script src="script2.js?v=V57.21"></script>
+<script src="script3.js?v=V57.21"></script>
 </body>
 </html>
 
