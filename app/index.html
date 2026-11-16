@@ -2443,6 +2443,13 @@
           <label style="display:flex;align-items:center;gap:4px;margin:0;"><input id="doc_attachBankBook" type="checkbox" disabled />통장사본 첨부</label>
           <label style="display:flex;align-items:center;gap:4px;margin:0;"><input id="doc_attachBizReg" type="checkbox" disabled />사업자등록증 첨부</label>
         </div>
+        <!-- 파일 더 붙이기(V57.22) — 다른 업체 견적서 등. 메일에만 붙고 드라이브에 남지 않는다 -->
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;">
+          <label class="btn-outline" style="flex:0 0 auto;padding:5px 10px;font-size:13px;cursor:pointer;margin:0;">📎 파일 첨부
+            <input id="doc_extraFiles" type="file" multiple style="display:none;" onchange="addDocExtraFiles(this)" /></label>
+          <span class="muted" style="flex:1 1 140px;">다른 업체 견적서·사진·엑셀 등 · 합쳐 15MB, 10개까지</span>
+        </div>
+        <div id="docExtraList" style="margin-top:6px;"></div>
         <div id="docEmailResult" style="margin-top:8px;"></div>
         <!-- 명함·통장사본 바꾸기는 관리자만(V57.15) — Script1 enterApp이 관리자일 때 연다 -->
         <div class="hidden" id="docBizCardBox" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
@@ -2514,9 +2521,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V57.21"></script>
-<script src="script2.js?v=V57.21"></script>
-<script src="script3.js?v=V57.21"></script>
+<script src="script1.js?v=V57.22"></script>
+<script src="script2.js?v=V57.22"></script>
+<script src="script3.js?v=V57.22"></script>
 </body>
 </html>
 
