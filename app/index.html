@@ -535,6 +535,11 @@
         <label>넘겨준 지점 <span class="muted" style="font-size:12px;font-weight:400;">— 다른 지점에서 넘겨받은 일이면 체크 (마진 20%를 그 지점에 지급)</span></label>
         <input type="hidden" id="f_referrer" />
         <div id="f_referrerChips" style="margin-top:4px;"></div>
+        <div id="f_freelanceWrap" class="hidden" style="margin-top:10px;padding:10px 12px;border:1px solid #c7d2fe;border-radius:8px;background:#eef2ff;">
+          <label style="display:flex;align-items:center;gap:8px;margin:0;font-weight:700;cursor:pointer;"><input type="checkbox" id="f_freelance" style="width:auto;margin:0;" onchange="onFreelanceToggle('f')" /> 본사 프리랜서</label>
+          <div class="muted" style="font-size:12px;margin-top:4px;">본사 일을 프리랜서로 한 건 — 마진의 50%를 받습니다. 본사 장부와 이 지점 장부에 두 줄로 들어갑니다. 자재는 기본 이 지점 것이고, 본사 자재는 자재 줄의 '본사 자재'를 누르세요.</div>
+          <div id="f_freelanceInfo" style="font-size:13px;margin-top:6px;"></div>
+        </div>
 
         <div style="margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fafbfc;">
           <strong style="font-size:13px;">견적서/거래명세서 연결 (선택)</strong>
@@ -1068,6 +1073,11 @@
           <label>넘겨준 지점 <span class="muted" style="font-size:12px;font-weight:400;">— 다른 지점에서 넘겨받은 일이면 체크 (마진 20%를 그 지점에 지급)</span></label>
           <input type="hidden" id="a_referrer" />
           <div id="a_referrerChips" style="margin-top:4px;"></div>
+          <div id="a_freelanceWrap" class="hidden" style="margin-top:10px;padding:10px 12px;border:1px solid #c7d2fe;border-radius:8px;background:#eef2ff;">
+            <label style="display:flex;align-items:center;gap:8px;margin:0;font-weight:700;cursor:pointer;"><input type="checkbox" id="a_freelance" style="width:auto;margin:0;" onchange="onFreelanceToggle('a')" /> 본사 프리랜서</label>
+            <div class="muted" style="font-size:12px;margin-top:4px;">본사 일을 프리랜서로 한 건 — 마진의 50%를 받습니다. 본사 장부와 이 지점 장부에 두 줄로 들어갑니다. 자재는 기본 이 지점 것이고, 본사 자재는 자재 줄의 '본사 자재'를 누르세요.</div>
+            <div id="a_freelanceInfo" style="font-size:13px;margin-top:6px;"></div>
+          </div>
 
           <div style="margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:8px;background:#fafbfc;">
             <strong style="font-size:13px;">견적서/거래명세서 연결 (선택)</strong>
@@ -1689,6 +1699,16 @@
               <thead><tr><th>날짜</th><th>시공 지점</th><th>넘겨준 지점</th><th>주소</th><th>내용</th><th>마진</th><th>인센티브(20%)</th></tr></thead>
               <tbody id="referralRowBody"></tbody>
             </table>
+          </div>
+
+          <div id="referralFreelanceWrap" class="hidden">
+            <h4 style="margin:16px 0 6px;">④ 본사 프리랜서 — 본사가 지점에 보낼 돈</h4>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>날짜</th><th>지점</th><th>주소</th><th>내용</th><th>프리랜서비(50%)</th><th>지점 자재비</th><th>보낼 돈</th></tr></thead>
+                <tbody id="referralFreelanceBody"></tbody>
+              </table>
+            </div>
           </div>
 
           <div id="referralSendWrap" class="hidden" style="margin-top:12px;">
@@ -2488,6 +2508,18 @@
   </div>
 
   <!-- V57.17: 새 기록의 날짜가 오늘이 아닐 때 저장 전에 한 번 묻는다(Script1 doSubmit). 뒤로가기는 취소와 같다. -->
+  <div id="htxDiffModal" class="modal-backdrop hidden" data-close-fn="cancelHtxDiff" style="z-index:160;">
+    <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="htxDiffTitle" style="max-width:420px;border-top:6px solid #d97706;">
+      <h3 id="htxDiffTitle" style="margin:0 0 12px;color:#b45309;">⚠️ 장부와 다른 금액이 있습니다</h3>
+      <div id="htxDiffBody" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;font-size:14px;line-height:1.7;max-height:50vh;overflow:auto;"></div>
+      <p style="margin:14px 0 16px;font-weight:600;color:#b45309;">엑셀에는 입력한 금액이 들어가고, 장부는 그대로 둡니다. 그래도 만들까요?</p>
+      <div class="row">
+        <button id="htxDiffGo" style="background:#d97706;color:#fff;" onclick="confirmHtxDiff()">그래도 만들기</button>
+        <button id="htxDiffCancel" class="btn-outline" onclick="cancelHtxDiff()">취소</button>
+      </div>
+    </div>
+  </div>
+
   <div id="entryDateWarnModal" class="modal-backdrop hidden" data-close-fn="cancelEntryDateWarn" style="z-index:160;">
     <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="entryDateWarnTitle" style="max-width:360px;border-top:6px solid #dc2626;">
       <h3 id="entryDateWarnTitle" style="margin:0 0 12px;color:#b91c1c;">⚠️ 오늘이 아닌 날짜입니다</h3>
@@ -2521,9 +2553,9 @@
   // 이 값이 있으면 Script1.html의 RUN()이 google.script.run 대신 doPost JSON API로 나간다.
   window.__API_BASE__ = "https://script.google.com/macros/s/AKfycby-npBgC32jFnKU74bx7gzFUBvuNctt8POBqBnWo9NsbfPuo6MjODDZ6dZvnBtwC9lf/exec";
 </script>
-<script src="script1.js?v=V57.40"></script>
-<script src="script2.js?v=V57.40"></script>
-<script src="script3.js?v=V57.40"></script>
+<script src="script1.js?v=V57.42"></script>
+<script src="script2.js?v=V57.42"></script>
+<script src="script3.js?v=V57.42"></script>
 </body>
 </html>
 
